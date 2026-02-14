@@ -36,4 +36,6 @@ export interface FilterOptions {
 export interface Region {
   code: string;
   name: string;
+  lat: number;
+  lng: number;
 }
