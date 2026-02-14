@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SEOUL_GU } from "@/lib/constants";
+import RegionPicker from "@/components/RegionPicker";
 
 const AREA_OPTIONS = [
   { value: "all", label: "전체 면적" },
@@ -51,18 +51,7 @@ export default function FilterBar({ showArea = true, showPeriod = true }: Filter
 
   return (
     <div className="flex flex-wrap gap-3 p-4 bg-muted/50 rounded-lg border">
-      <Select value={region} onValueChange={(v) => updateParam("region", v)}>
-        <SelectTrigger className="w-[160px]">
-          <SelectValue placeholder="지역 선택" />
-        </SelectTrigger>
-        <SelectContent>
-          {SEOUL_GU.map((gu) => (
-            <SelectItem key={gu.code} value={gu.code}>
-              {gu.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <RegionPicker value={region} onValueChange={(v) => updateParam("region", v)} />
 
       {showArea && (
         <Select value={area} onValueChange={(v) => updateParam("area", v)}>
