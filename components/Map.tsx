@@ -3,8 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { SEOUL_GU } from "@/lib/constants";
 
-const KAKAO_SDK_URL = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_JS_KEY}&autoload=false`;
-
 export default function Map() {
   const mapRef = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(false);
@@ -17,8 +15,14 @@ export default function Map() {
       return;
     }
 
+    const key = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
+    if (!key) {
+      setError("카카오맵 API 키가 설정되지 않았습니다");
+      return;
+    }
+
     const script = document.createElement("script");
-    script.src = KAKAO_SDK_URL;
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${key}&autoload=false`;
     script.async = true;
     script.onload = () => {
       window.kakao.maps.load(() => setLoaded(true));
