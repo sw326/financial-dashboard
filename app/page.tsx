@@ -1,59 +1,37 @@
 import Link from "next/link";
-import { SEOUL_GU } from "@/lib/constants";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Home() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">🏠 서울 아파트 실거래가</h1>
-        <p className="text-muted-foreground mt-1">
-          구를 선택하면 시세 추이를 확인할 수 있습니다
+    <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-8">
+      {/* 지도 Placeholder */}
+      <div className="w-full max-w-2xl aspect-[4/3] rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/30 flex flex-col items-center justify-center gap-3">
+        <span className="text-5xl">🗺️</span>
+        <p className="text-lg font-medium text-muted-foreground">
+          지도 준비 중
+        </p>
+        <p className="text-sm text-muted-foreground/70">
+          카카오맵 기반 서울 아파트 실거래가 지도가 곧 제공됩니다
         </p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-        {SEOUL_GU.map((gu) => (
-          <Link key={gu.code} href={`/trend?region=${gu.code}`}>
-            <Card className="hover:border-primary hover:shadow-md transition-all cursor-pointer">
-              <CardHeader className="p-4">
-                <CardTitle className="text-sm text-center">{gu.name}</CardTitle>
-              </CardHeader>
-            </Card>
-          </Link>
-        ))}
+      {/* 서비스 소개 */}
+      <div className="text-center space-y-1">
+        <h1 className="text-xl font-bold">서울 아파트 실거래가</h1>
+        <p className="text-sm text-muted-foreground">
+          국토교통부 실거래가 공공데이터 기반 · 시세 추이 · 최근 거래 · 순위
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-        <Link href="/trend">
-          <Card className="hover:border-primary transition-all cursor-pointer">
-            <CardHeader>
-              <CardTitle className="text-base">📈 시세 추이</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                월별 평균 거래가 및 거래량 차트
-              </p>
-            </CardHeader>
-          </Card>
+      {/* 탭 링크 */}
+      <div className="flex gap-6 text-sm">
+        <Link href="/trend" className="text-muted-foreground hover:text-foreground transition-colors">
+          📈 시세 추이
         </Link>
-        <Link href="/recent">
-          <Card className="hover:border-primary transition-all cursor-pointer">
-            <CardHeader>
-              <CardTitle className="text-base">📋 최근 거래</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                최근 3개월 거래 내역 테이블
-              </p>
-            </CardHeader>
-          </Card>
+        <Link href="/recent" className="text-muted-foreground hover:text-foreground transition-colors">
+          📋 최근 거래
         </Link>
-        <Link href="/rank">
-          <Card className="hover:border-primary transition-all cursor-pointer">
-            <CardHeader>
-              <CardTitle className="text-base">🏆 순위</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                아파트별 평균 거래가 순위
-              </p>
-            </CardHeader>
-          </Card>
+        <Link href="/rank" className="text-muted-foreground hover:text-foreground transition-colors">
+          🏆 순위
         </Link>
       </div>
     </div>
