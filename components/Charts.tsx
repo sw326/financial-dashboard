@@ -16,12 +16,8 @@ import {
 } from "recharts";
 import { useTrades } from "@/hooks/useTrades";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatAmount } from "@/lib/utils";
 import { AptTrade } from "@/lib/types";
-
-function formatAmount(v: number) {
-  if (v >= 10000) return `${(v / 10000).toFixed(1)}억`;
-  return `${v.toLocaleString()}만`;
-}
 
 function aggregateByMonth(trades: AptTrade[]) {
   const map = new Map<string, { sum: number; count: number }>();

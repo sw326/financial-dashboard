@@ -12,14 +12,9 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTrades } from "@/hooks/useTrades";
-import { AptTrade } from "@/lib/types";
+import { formatAmount } from "@/lib/utils";
 
 type SortKey = "amount" | "date";
-
-function formatAmount(v: number) {
-  if (v >= 10000) return `${(v / 10000).toFixed(1)}억`;
-  return `${v.toLocaleString()}만`;
-}
 
 export default function TradeTable() {
   const searchParams = useSearchParams();

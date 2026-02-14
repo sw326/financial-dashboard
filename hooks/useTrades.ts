@@ -1,36 +1,38 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { AptTrade } from "@/lib/types";
 import { getMonthsBack, periodToMonths, filterByArea, fetchTrades } from "@/lib/api";
 
 export function useTrades(guCode: string, period: string, areaFilter: string) {
   const [trades, setTrades] = useState<AptTrade[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [initialLoad, setInitialLoad] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
 
     const months = getMonthsBack(periodToMonths(period));
-    fetchTrades(guCode, months)
-      .then((data) => {
+
+    startTransition(async () => {
+      try {
+        const data = await fetchTrades(guCode, months);
         if (!cancelled) {
           setTrades(filterByArea(data, areaFilter));
-          setLoading(false);
+          setError(null);
+          setInitialLoad(false);
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         if (!cancelled) {
-          setError(err.message);
-          setLoading(false);
+          setError(err instanceof Error ? err.message : "Unknown error");
+          setInitialLoad(false);
         }
-      });
+      }
+    });
 
     return () => { cancelled = true; };
   }, [guCode, period, areaFilter]);
 
-  return { trades, loading, error };
+  return { trades, loading: isPending || initialLoad, error };
 }
