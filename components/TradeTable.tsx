@@ -1,9 +1,124 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useTrades } from "@/hooks/useTrades";
+import { AptTrade } from "@/lib/types";
+
+type SortKey = "amount" | "date";
+
+function formatAmount(v: number) {
+  if (v >= 10000) return `${(v / 10000).toFixed(1)}억`;
+  return `${v.toLocaleString()}만`;
+}
+
 export default function TradeTable() {
+  const searchParams = useSearchParams();
+  const region = searchParams.get("region") || "11680";
+  const area = searchParams.get("area") || "all";
+
+  const { trades, loading, error } = useTrades(region, "3m", area);
+  const [sortKey, setSortKey] = useState<SortKey>("date");
+  const [sortAsc, setSortAsc] = useState(false);
+
+  const sorted = useMemo(() => {
+    const arr = [...trades];
+    arr.sort((a, b) => {
+      if (sortKey === "amount") {
+        return sortAsc ? a.dealAmount - b.dealAmount : b.dealAmount - a.dealAmount;
+      }
+      const dateA = a.dealYear * 10000 + a.dealMonth * 100 + a.dealDay;
+      const dateB = b.dealYear * 10000 + b.dealMonth * 100 + b.dealDay;
+      return sortAsc ? dateA - dateB : dateB - dateA;
+    });
+    return arr;
+  }, [trades, sortKey, sortAsc]);
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortAsc(!sortAsc);
+    else { setSortKey(key); setSortAsc(false); }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="w-full h-10 rounded" />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-destructive/10 text-destructive rounded-lg p-8 text-center">
+        데이터 로딩 실패: {error}
+      </div>
+    );
+  }
+
+  if (sorted.length === 0) {
+    return (
+      <div className="bg-muted rounded-lg p-8 text-center text-muted-foreground">
+        해당 조건의 거래 데이터가 없습니다.
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full bg-muted rounded-lg p-4">
-      <p className="text-muted-foreground">📋 거래 테이블 준비 중</p>
+    <div className="bg-card rounded-lg border overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>아파트명</TableHead>
+            <TableHead>법정동</TableHead>
+            <TableHead className="text-right">전용면적(㎡)</TableHead>
+            <TableHead className="text-right">층</TableHead>
+            <TableHead
+              className="text-right cursor-pointer hover:text-foreground"
+              onClick={() => toggleSort("amount")}
+            >
+              거래금액 {sortKey === "amount" ? (sortAsc ? "↑" : "↓") : ""}
+            </TableHead>
+            <TableHead
+              className="text-right cursor-pointer hover:text-foreground"
+              onClick={() => toggleSort("date")}
+            >
+              거래일 {sortKey === "date" ? (sortAsc ? "↑" : "↓") : ""}
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sorted.slice(0, 100).map((t, i) => (
+            <TableRow key={i}>
+              <TableCell className="font-medium">{t.aptName}</TableCell>
+              <TableCell>{t.dong}</TableCell>
+              <TableCell className="text-right">{t.area.toFixed(1)}</TableCell>
+              <TableCell className="text-right">{t.floor}</TableCell>
+              <TableCell className="text-right font-semibold">
+                {formatAmount(t.dealAmount)}
+              </TableCell>
+              <TableCell className="text-right">
+                {t.dealYear}.{String(t.dealMonth).padStart(2, "0")}.{String(t.dealDay).padStart(2, "0")}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      {sorted.length > 100 && (
+        <div className="text-center text-sm text-muted-foreground py-3 border-t">
+          총 {sorted.length}건 중 100건 표시
+        </div>
+      )}
     </div>
   );
 }
