@@ -31,11 +31,11 @@ const HIGHLIGHT_SYMBOLS = [
 const GANGNAM_CODE = "11680"; // 강남구
 
 const SHORTCUTS = [
-  { href: "/market", icon: "📊", label: "시장개요" },
-  { href: "/stock", icon: "📈", label: "종목차트" },
-  { href: "/trend", icon: "📉", label: "시세추이" },
-  { href: "/recent", icon: "📋", label: "최근거래" },
-  { href: "/rank", icon: "🏆", label: "순위" },
+  { href: "/market", icon: "📊", label: "시장개요", group: "증시" },
+  { href: "/stock", icon: "📈", label: "종목차트", group: "증시" },
+  { href: "/trend", icon: "📉", label: "시세추이", group: "부동산" },
+  { href: "/recent", icon: "📋", label: "최근거래", group: "부동산" },
+  { href: "/rank", icon: "🏆", label: "순위", group: "부동산" },
 ];
 
 /* ── 유틸 ── */
@@ -116,20 +116,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── 2. 카카오맵 + 증시 하이라이트 ── */}
+      {/* ── 2. 증시 하이라이트 + 카카오맵 ── */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* 맵 */}
-        <Card className="py-0 overflow-hidden">
-          <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-base">🗺️ 서울 부동산 지도</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="h-[320px]">
-              <Map kakaoKey={KAKAO_KEY} />
-            </div>
-          </CardContent>
-        </Card>
-
         {/* 증시 하이라이트 */}
         <Card className="py-0">
           <CardHeader className="pb-2 pt-3 px-4">
@@ -159,6 +147,18 @@ export default function Home() {
                 ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* 맵 */}
+        <Card className="py-0 overflow-hidden">
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="text-base">🗺️ 서울 부동산 지도</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="h-[320px]">
+              <Map kakaoKey={KAKAO_KEY} />
+            </div>
           </CardContent>
         </Card>
       </section>
