@@ -14,15 +14,27 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "서울 아파트 실거래가",
-  description: "서울시 아파트 실거래가 시각화",
+  title: "금융 대시보드",
+  description: "부동산 실거래가 & 증시 시각화",
 };
 
-const NAV_ITEMS = [
-  { href: "/", label: "🗺️ 지도" },
-  { href: "/trend", label: "📈 시세추이" },
-  { href: "/recent", label: "🕐 최근거래" },
-  { href: "/rank", label: "🏆 순위" },
+const NAV_GROUPS = [
+  {
+    label: "🏠 부동산",
+    items: [
+      { href: "/", label: "지도" },
+      { href: "/trend", label: "시세추이" },
+      { href: "/recent", label: "최근거래" },
+      { href: "/rank", label: "순위" },
+    ],
+  },
+  {
+    label: "📈 증시",
+    items: [
+      { href: "/market", label: "시장개요" },
+      { href: "/stock", label: "종목차트" },
+    ],
+  },
 ];
 
 export default function RootLayout({
@@ -36,16 +48,22 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <nav className="border-b bg-background">
-          <div className="max-w-6xl mx-auto px-4 h-14 flex items-center gap-6">
-            <span className="font-bold text-lg">🏠 실거래가</span>
-            {NAV_ITEMS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {item.label}
-              </Link>
+          <div className="max-w-6xl mx-auto px-4 h-14 flex items-center gap-1">
+            <span className="font-bold text-lg mr-4">💰 금융 대시보드</span>
+            {NAV_GROUPS.map((group) => (
+              <div key={group.label} className="flex items-center gap-1">
+                <span className="text-xs font-medium text-muted-foreground/60 mr-1">{group.label}</span>
+                {group.items.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-muted"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+                <span className="mx-2 text-border">|</span>
+              </div>
             ))}
           </div>
         </nav>

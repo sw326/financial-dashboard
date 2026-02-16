@@ -39,3 +39,32 @@ export interface Region {
   lat: number;
   lng: number;
 }
+
+/* ── 증시 ── */
+
+export interface MarketIndex {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  changePercent: number;
+}
+
+export interface StockQuote {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  marketCap?: number;
+  per?: number;
+  high52w?: number;
+  low52w?: number;
+  dividendYield?: number;
+}
+
+export interface ChartData {
+  date: string;
+  close: number;
+  volume: number;
+}
