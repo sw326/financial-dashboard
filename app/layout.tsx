@@ -22,7 +22,7 @@ const NAV_GROUPS = [
   {
     label: "🏠 부동산",
     items: [
-      { href: "/", label: "지도" },
+      { href: "/", label: "대시보드" },
       { href: "/trend", label: "시세추이" },
       { href: "/recent", label: "최근거래" },
       { href: "/rank", label: "순위" },
