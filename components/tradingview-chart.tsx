@@ -5,10 +5,9 @@ import { useTheme } from "next-themes";
 
 interface TradingViewChartProps {
   symbol: string;
-  height?: number;
 }
 
-function TradingViewChartInner({ symbol, height = 500 }: TradingViewChartProps) {
+function TradingViewChartInner({ symbol }: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { resolvedTheme } = useTheme();
   
@@ -39,6 +38,7 @@ function TradingViewChartInner({ symbol, height = 500 }: TradingViewChartProps) 
       hide_legend: false,
       save_image: false,
       calendar: false,
+      hide_volume: false,
       support_host: "https://www.tradingview.com",
     });
     
@@ -46,8 +46,8 @@ function TradingViewChartInner({ symbol, height = 500 }: TradingViewChartProps) 
   }, [tvSymbol, resolvedTheme]);
   
   return (
-    <div className="tradingview-widget-container" ref={containerRef} style={{ height }}>
-      <div className="tradingview-widget-container__widget" style={{ height: "100%", width: "100%" }} />
+    <div className="tradingview-widget-container h-full" ref={containerRef}>
+      <div className="tradingview-widget-container__widget h-full w-full" />
     </div>
   );
 }

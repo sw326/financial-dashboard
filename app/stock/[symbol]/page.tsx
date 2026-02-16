@@ -86,7 +86,9 @@ function StockDetailContent({ symbol }: { symbol: string }) {
         <TabsContent value="chart">
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-b-lg">
-              <TradingViewChart symbol={symbol} height={500} />
+              <div className="h-[450px] md:h-[600px]">
+                <TradingViewChart symbol={symbol} />
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
