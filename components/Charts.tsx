@@ -18,6 +18,7 @@ import { useTrades } from "@/hooks/useTrades";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatAmount } from "@/lib/utils";
 import { AptTrade } from "@/lib/types";
+import { chartTooltipStyle } from "@/components/chart-tooltip";
 
 function aggregateByMonth(trades: AptTrade[]) {
   const map = new Map<string, { sum: number; count: number }>();
@@ -77,11 +78,12 @@ export default function Charts() {
         <h3 className="text-sm font-medium mb-4">평균 거래가 추이</h3>
         <ResponsiveContainer width="100%" height={350}>
           <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis dataKey="month" fontSize={12} />
             <YAxis tickFormatter={formatAmount} fontSize={12} />
             <Tooltip
               formatter={(v) => [formatAmount(Number(v)), "평균 거래가"]}
+              {...chartTooltipStyle}
             />
             <Legend />
             <Line
@@ -89,8 +91,10 @@ export default function Charts() {
               dataKey="avgPrice"
               name="평균 거래가(만원)"
               stroke="hsl(var(--chart-1))"
-              strokeWidth={2}
-              dot={{ r: 3 }}
+              strokeWidth={2.5}
+              dot={{ r: 4 }}
+              activeDot={{ r: 6 }}
+              connectNulls
             />
           </LineChart>
         </ResponsiveContainer>
@@ -100,11 +104,12 @@ export default function Charts() {
         <h3 className="text-sm font-medium mb-4">월별 거래량</h3>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis dataKey="month" fontSize={12} />
             <YAxis fontSize={12} />
             <Tooltip
               formatter={(v) => [`${v}건`, "거래량"]}
+              {...chartTooltipStyle}
             />
             <Bar
               dataKey="count"

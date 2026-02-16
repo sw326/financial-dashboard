@@ -40,6 +40,20 @@ declare namespace kakao.maps {
     removable?: boolean;
   }
 
+  class CustomOverlay {
+    constructor(options: CustomOverlayOptions);
+    setMap(map: Map | null): void;
+    getPosition(): LatLng;
+  }
+
+  interface CustomOverlayOptions {
+    content?: string | HTMLElement;
+    position?: LatLng;
+    xAnchor?: number;
+    yAnchor?: number;
+    zIndex?: number;
+  }
+
   namespace event {
     function addListener(
       target: Marker | Map,
@@ -53,4 +67,5 @@ declare namespace kakao.maps {
 
 interface Window {
   kakao: typeof kakao;
+  __closeOverlay?: () => void;
 }

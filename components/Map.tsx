@@ -35,7 +35,15 @@ export default function Map({ kakaoKey }: { kakaoKey: string }) {
       level: 8,
     });
 
-    let openInfoWindow: kakao.maps.InfoWindow | null = null;
+    let openOverlay: kakao.maps.CustomOverlay | null = null;
+
+    // 전역 닫기 함수
+    window.__closeOverlay = () => {
+      if (openOverlay) {
+        openOverlay.setMap(null);
+        openOverlay = null;
+      }
+    };
 
     SEOUL_GU.forEach((gu) => {
       const marker = new window.kakao.maps.Marker({
@@ -43,24 +51,90 @@ export default function Map({ kakaoKey }: { kakaoKey: string }) {
         map,
       });
 
-      const infoWindow = new window.kakao.maps.InfoWindow({
-        content: `
-          <div style="padding:12px;min-width:160px;font-size:14px;line-height:1.8">
-            <strong style="font-size:15px">${gu.name}</strong>
-            <div style="margin-top:6px;display:flex;flex-direction:column;gap:2px">
-              <a href="/trend?region=${gu.code}" style="color:#2563eb;text-decoration:none">📈 시세 추이 보기</a>
-              <a href="/recent?region=${gu.code}" style="color:#2563eb;text-decoration:none">📋 최근 거래 보기</a>
-              <a href="/rank?region=${gu.code}" style="color:#2563eb;text-decoration:none">🏆 순위 보기</a>
-            </div>
+      const overlayContent = `
+        <div style="
+          padding: 14px 16px;
+          min-width: 170px;
+          font-family: 'Pretendard', -apple-system, sans-serif;
+          font-size: 13px;
+          line-height: 1.6;
+          background: hsl(var(--card));
+          color: hsl(var(--foreground));
+          border: 1px solid hsl(var(--border));
+          border-radius: 10px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+          position: relative;
+        ">
+          <button 
+            onclick="window.__closeOverlay()"
+            style="
+              position: absolute;
+              top: 8px;
+              right: 8px;
+              background: transparent;
+              border: none;
+              font-size: 18px;
+              cursor: pointer;
+              color: hsl(var(--muted-foreground));
+              line-height: 1;
+              padding: 0;
+              width: 20px;
+              height: 20px;
+            "
+          >×</button>
+          <strong style="font-size: 14px; display: block; margin-bottom: 10px; color: hsl(var(--foreground));">${gu.name}</strong>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <a href="/trend?region=${gu.code}" style="
+              color: hsl(var(--primary));
+              text-decoration: none;
+              font-weight: 500;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              transition: opacity 0.2s;
+            " onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
+              <span>📈</span> 시세 추이
+            </a>
+            <a href="/recent?region=${gu.code}" style="
+              color: hsl(var(--foreground));
+              text-decoration: none;
+              font-weight: 500;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              opacity: 0.8;
+              transition: opacity 0.2s;
+            " onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">
+              <span>📋</span> 최근 거래
+            </a>
+            <a href="/rank?region=${gu.code}" style="
+              color: hsl(var(--foreground));
+              text-decoration: none;
+              font-weight: 500;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              opacity: 0.8;
+              transition: opacity 0.2s;
+            " onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">
+              <span>🏆</span> 순위
+            </a>
           </div>
-        `,
-        removable: true,
+        </div>
+      `;
+
+      const overlay = new window.kakao.maps.CustomOverlay({
+        content: overlayContent,
+        position: new window.kakao.maps.LatLng(gu.lat, gu.lng),
+        yAnchor: 1.3,
       });
 
       window.kakao.maps.event.addListener(marker, "click", () => {
-        if (openInfoWindow) openInfoWindow.close();
-        infoWindow.open(map, marker);
-        openInfoWindow = infoWindow;
+        if (openOverlay) {
+          openOverlay.setMap(null);
+        }
+        overlay.setMap(map);
+        openOverlay = overlay;
       });
     });
   }, [loaded]);

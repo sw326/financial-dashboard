@@ -9,6 +9,7 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
 import type { StockQuote, ChartData } from "@/lib/types";
+import { chartTooltipStyle } from "@/components/chart-tooltip";
 
 const PERIODS = ["1mo", "3mo", "6mo", "1y", "5y"] as const;
 
@@ -141,12 +142,13 @@ function StockContent() {
               <CardContent className="pt-4">
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={chart}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={(v) => v.slice(5)} />
                     <YAxis domain={["auto", "auto"]} tick={{ fontSize: 11 }} tickFormatter={(v) => v.toLocaleString()} />
                     <Tooltip
                       formatter={(v) => [(v as number).toLocaleString(), "종가"]}
                       labelFormatter={(l) => `📅 ${l}`}
+                      {...chartTooltipStyle}
                     />
                     <Line
                       type="monotone"
@@ -170,11 +172,13 @@ function StockContent() {
               <CardContent>
                 <ResponsiveContainer width="100%" height={120}>
                   <BarChart data={chart}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(v) => v.slice(5)} />
                     <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => (v / 1e6).toFixed(0) + "M"} />
                     <Tooltip
                       formatter={(v) => [(v as number).toLocaleString(), "거래량"]}
                       labelFormatter={(l) => `📅 ${l}`}
+                      {...chartTooltipStyle}
                     />
                     <Bar dataKey="volume" fill="#94a3b8" />
                   </BarChart>

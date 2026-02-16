@@ -65,8 +65,8 @@ function generateSparklineData(changePercent: number): number[] {
   const trend = changePercent > 0 ? 1 : -1;
   
   for (let i = 0; i < points; i++) {
-    const noise = (Math.random() - 0.5) * 2;
-    const trendValue = (i / points) * trend;
+    const noise = (Math.random() - 0.5) * 4;  // 2 → 4로 변동폭 증가
+    const trendValue = (i / points) * trend * 3;  // 트렌드 강조
     data.push(100 + trendValue + noise);
   }
   
