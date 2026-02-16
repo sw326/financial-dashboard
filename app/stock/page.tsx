@@ -62,7 +62,8 @@ function StockContent() {
     }
   };
 
-  const color = (v: number) => (v >= 0 ? "text-red-500" : "text-blue-500");
+  const color = (v: number) => (v >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]");
+  const colorValue = (v: number) => (v >= 0 ? "#ef4444" : "#3b82f6");
   const sign = (v: number) => (v >= 0 ? "+" : "");
   const fmt = (v?: number) => v != null ? v.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "-";
 
@@ -150,7 +151,7 @@ function StockContent() {
                     <Line
                       type="monotone"
                       dataKey="close"
-                      stroke={quote.change >= 0 ? "#ef4444" : "#3b82f6"}
+                      stroke={colorValue(quote.change)}
                       dot={false}
                       strokeWidth={2}
                     />

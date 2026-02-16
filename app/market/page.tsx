@@ -49,7 +49,8 @@ export default function MarketPage() {
     });
   }, []);
 
-  const color = (v: number) => (v >= 0 ? "text-red-500" : "text-blue-500");
+  const color = (v: number) => (v >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]");
+  const colorValue = (v: number) => (v >= 0 ? "#ef4444" : "#3b82f6");
   const sign = (v: number) => (v >= 0 ? "+" : "");
 
   if (loading) {
@@ -118,9 +119,9 @@ export default function MarketPage() {
                       <Line
                         type="monotone"
                         dataKey="close"
-                        stroke={idx.change >= 0 ? "#ef4444" : "#3b82f6"}
+                        stroke={colorValue(idx.change)}
                         dot={false}
-                        strokeWidth={1.5}
+                        strokeWidth={2}
                       />
                     </LineChart>
                   </ResponsiveContainer>

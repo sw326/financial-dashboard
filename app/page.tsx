@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Sparkline } from "@/components/sparkline";
 import type { MarketIndex, AptTrade } from "@/lib/types";
 
 const Map = dynamic(() => import("@/components/Map"), { ssr: false });
@@ -16,7 +17,14 @@ const INDEX_SYMBOLS = [
   { symbol: "^KS11", label: "코스피" },
   { symbol: "^KQ11", label: "코스닥" },
   { symbol: "^GSPC", label: "S&P 500" },
+  { symbol: "^IXIC", label: "나스닥" },
+];
+
+const COMMODITY_SYMBOLS = [
   { symbol: "KRW=X", label: "USD/KRW" },
+  { symbol: "GC=F", label: "금" },
+  { symbol: "CL=F", label: "WTI유" },
+  { symbol: "BTC-USD", label: "비트코인" },
 ];
 
 const HIGHLIGHT_SYMBOLS = [
@@ -39,7 +47,8 @@ const SHORTCUTS = [
 ];
 
 /* ── 유틸 ── */
-const color = (v: number) => (v >= 0 ? "text-red-500" : "text-blue-500");
+const colorClass = (v: number) => (v >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]");
+const colorValue = (v: number) => (v >= 0 ? "#ef4444" : "#3b82f6");
 const sign = (v: number) => (v >= 0 ? "+" : "");
 const fmt = (v: number, digits = 2) =>
   v.toLocaleString(undefined, { maximumFractionDigits: digits });
@@ -49,12 +58,29 @@ function dealYmd() {
   return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+// 임시 Sparkline 데이터 생성 (실제로는 히스토리 API 필요)
+function generateSparklineData(changePercent: number): number[] {
+  const points = 20;
+  const data: number[] = [];
+  const trend = changePercent > 0 ? 1 : -1;
+  
+  for (let i = 0; i < points; i++) {
+    const noise = (Math.random() - 0.5) * 2;
+    const trendValue = (i / points) * trend;
+    data.push(100 + trendValue + noise);
+  }
+  
+  return data;
+}
+
 /* ── 페이지 ── */
 export default function Home() {
   const [indices, setIndices] = useState<MarketIndex[]>([]);
+  const [commodities, setCommodities] = useState<MarketIndex[]>([]);
   const [highlights, setHighlights] = useState<MarketIndex[]>([]);
   const [trades, setTrades] = useState<AptTrade[]>([]);
   const [loadIdx, setLoadIdx] = useState(true);
+  const [loadCom, setLoadCom] = useState(true);
   const [loadHl, setLoadHl] = useState(true);
   const [loadTrade, setLoadTrade] = useState(true);
 
@@ -65,6 +91,13 @@ export default function Home() {
       .then((d) => { if (Array.isArray(d)) setIndices(d); })
       .catch(() => {})
       .finally(() => setLoadIdx(false));
+
+    // 환율/원자재
+    fetch(`/api/finance/quote?symbols=${COMMODITY_SYMBOLS.map((i) => i.symbol).join(",")}`)
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d)) setCommodities(d); })
+      .catch(() => {})
+      .finally(() => setLoadCom(false));
 
     // 증시 하이라이트
     fetch(`/api/finance/quote?symbols=${HIGHLIGHT_SYMBOLS.join(",")}`)
@@ -89,24 +122,59 @@ export default function Home() {
   }, []);
 
   const findIdx = (sym: string) => indices.find((i) => i.symbol === sym);
+  const findCom = (sym: string) => commodities.find((i) => i.symbol === sym);
 
   return (
     <div className="space-y-6">
-      {/* ── 1. 주요 지수 요약 ── */}
+      {/* ── 1. 주요 지수 (with Sparkline) ── */}
       <section>
-        <h2 className="text-lg font-semibold mb-3">📊 주요 지수</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <h2 className="text-xl font-bold mb-4">📊 주요 지수</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {loadIdx
-            ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20" />)
+            ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32" />)
             : INDEX_SYMBOLS.map(({ symbol, label }) => {
                 const d = findIdx(symbol);
                 if (!d) return null;
+                const sparkData = generateSparklineData(d.changePercent);
+                
                 return (
-                  <Card key={symbol} className="py-0">
+                  <Card key={symbol} className="hover:shadow-lg transition-shadow">
+                    <CardContent className="p-4">
+                      <p className="text-sm text-muted-foreground mb-2">{label}</p>
+                      <p className="text-2xl font-bold mb-1">{fmt(d.price)}</p>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Badge variant="outline" className={`text-sm font-semibold ${colorClass(d.changePercent)}`}>
+                          {sign(d.changePercent)}{d.changePercent.toFixed(2)}%
+                        </Badge>
+                        <span className={`text-sm ${colorClass(d.changePercent)}`}>
+                          {sign(d.change)}{fmt(d.change)}
+                        </span>
+                      </div>
+                      <div className="h-12 -mx-2">
+                        <Sparkline data={sparkData} color={colorValue(d.changePercent)} />
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+        </div>
+      </section>
+
+      {/* ── 2. 환율/원자재 ── */}
+      <section>
+        <h2 className="text-lg font-semibold mb-3">💱 환율 · 원자재</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {loadCom
+            ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20" />)
+            : COMMODITY_SYMBOLS.map(({ symbol, label }) => {
+                const d = findCom(symbol);
+                if (!d) return null;
+                return (
+                  <Card key={symbol} className="hover:shadow-md transition-shadow">
                     <CardContent className="p-3">
-                      <p className="text-xs text-muted-foreground">{label}</p>
+                      <p className="text-xs text-muted-foreground mb-1">{label}</p>
                       <p className="text-lg font-bold">{fmt(d.price)}</p>
-                      <Badge variant="outline" className={`text-xs ${color(d.changePercent)}`}>
+                      <Badge variant="outline" className={`text-xs ${colorClass(d.changePercent)}`}>
                         {sign(d.changePercent)}{d.changePercent.toFixed(2)}%
                       </Badge>
                     </CardContent>
@@ -116,17 +184,22 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── 2. 증시 하이라이트 + 카카오맵 ── */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* ── 3. 증시 하이라이트 + 부동산 최근 거래 ── */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* 증시 하이라이트 */}
-        <Card className="py-0">
-          <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-base">📈 증시 하이라이트</CardTitle>
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>📈 증시 하이라이트</span>
+              <Link href="/market" className="text-xs text-muted-foreground hover:text-foreground">
+                더보기 →
+              </Link>
+            </CardTitle>
           </CardHeader>
-          <CardContent className="px-4 pb-3">
+          <CardContent>
             {loadHl ? (
               <div className="space-y-2">
-                {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8" />)}
+                {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10" />)}
               </div>
             ) : (
               <div className="divide-y">
@@ -134,15 +207,15 @@ export default function Home() {
                   <Link
                     key={s.symbol}
                     href={`/stock?symbol=${encodeURIComponent(s.symbol)}`}
-                    className="flex items-center justify-between py-2 hover:bg-muted/50 -mx-1 px-1 rounded transition-colors"
+                    className="flex items-center justify-between py-3 hover:bg-muted/50 -mx-2 px-2 rounded transition-colors"
                   >
-                    <span className="text-sm font-medium truncate">{s.name}</span>
-                    <span className="flex items-center gap-2 shrink-0">
+                    <span className="text-sm font-medium truncate flex-1">{s.name}</span>
+                    <div className="flex items-center gap-3 shrink-0">
                       <span className="text-sm font-bold">{fmt(s.price, 0)}</span>
-                      <Badge variant="outline" className={`text-xs ${color(s.changePercent)}`}>
+                      <Badge variant="outline" className={`text-xs ${colorClass(s.changePercent)} min-w-[60px] justify-center`}>
                         {sign(s.changePercent)}{s.changePercent.toFixed(2)}%
                       </Badge>
-                    </span>
+                    </div>
                   </Link>
                 ))}
               </div>
@@ -150,80 +223,71 @@ export default function Home() {
           </CardContent>
         </Card>
 
-        {/* 맵 */}
-        <Card className="py-0 overflow-hidden">
-          <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-base">🗺️ 서울 부동산 지도</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="h-[320px]">
-              <Map kakaoKey={KAKAO_KEY} />
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* ── 3. 최근 부동산 거래 ── */}
-      <section>
-        <Card className="py-0">
-          <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-base flex items-center justify-between">
-              <span>🏠 최근 부동산 거래 (강남구)</span>
+        {/* 최근 부동산 거래 */}
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>🏠 최근 부동산 거래</span>
               <Link href="/recent?region=11680" className="text-xs text-muted-foreground hover:text-foreground">
                 더보기 →
               </Link>
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-4 pb-3">
+          <CardContent>
             {loadTrade ? (
               <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-8" />)}
+                {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10" />)}
               </div>
             ) : trades.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">거래 데이터가 없습니다.</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-muted-foreground border-b">
-                      <th className="pb-2 font-medium">아파트</th>
-                      <th className="pb-2 font-medium">동</th>
-                      <th className="pb-2 font-medium text-right">면적(㎡)</th>
-                      <th className="pb-2 font-medium text-right">층</th>
-                      <th className="pb-2 font-medium text-right">거래가(만원)</th>
-                      <th className="pb-2 font-medium text-right">날짜</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {trades.map((t, i) => (
-                      <tr key={i} className="border-b last:border-0 hover:bg-muted/50">
-                        <td className="py-2 font-medium truncate max-w-[140px]">{t.aptName}</td>
-                        <td className="py-2">{t.dong}</td>
-                        <td className="py-2 text-right">{t.area.toFixed(1)}</td>
-                        <td className="py-2 text-right">{t.floor}</td>
-                        <td className="py-2 text-right font-bold">{t.dealAmount.toLocaleString()}</td>
-                        <td className="py-2 text-right text-muted-foreground">
-                          {t.dealMonth}/{t.dealDay}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="space-y-3">
+                {trades.map((t, i) => (
+                  <div key={i} className="flex items-start justify-between pb-3 border-b last:border-0">
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold">{t.aptName}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {t.dong} · {t.area.toFixed(1)}㎡ · {t.floor}층
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold">{t.dealAmount.toLocaleString()}만원</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {t.dealMonth}/{t.dealDay}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>
         </Card>
       </section>
 
-      {/* ── 4. 바로가기 ── */}
+      {/* ── 4. 지도 ── */}
       <section>
+        <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle>🗺️ 서울 부동산 지도</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="h-[400px]">
+              <Map kakaoKey={KAKAO_KEY} />
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* ── 5. 바로가기 ── */}
+      <section>
+        <h2 className="text-lg font-semibold mb-3">🔗 바로가기</h2>
         <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
           {SHORTCUTS.map(({ href, icon, label }) => (
             <Link key={href} href={href}>
-              <Card className="py-0 hover:shadow-md transition-shadow cursor-pointer">
-                <CardContent className="p-3 text-center">
-                  <span className="text-2xl">{icon}</span>
-                  <p className="text-sm mt-1 font-medium">{label}</p>
+              <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                <CardContent className="p-4 text-center">
+                  <span className="text-3xl">{icon}</span>
+                  <p className="text-sm mt-2 font-medium">{label}</p>
                 </CardContent>
               </Card>
             </Link>
