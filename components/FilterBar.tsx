@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, memo } from "react";
 import {
   Select,
   SelectContent,
@@ -31,7 +31,7 @@ interface FilterBarProps {
   showPeriod?: boolean;
 }
 
-export default function FilterBar({ showArea = true, showPeriod = true }: FilterBarProps) {
+function FilterBarComponent({ showArea = true, showPeriod = true }: FilterBarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -85,3 +85,5 @@ export default function FilterBar({ showArea = true, showPeriod = true }: Filter
     </div>
   );
 }
+
+export default memo(FilterBarComponent);

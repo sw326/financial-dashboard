@@ -1,6 +1,11 @@
 import { Suspense } from "react";
-import RankChart from "@/components/RankChart";
+import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/ui/skeleton";
 import FilterBar from "@/components/FilterBar";
+
+const RankChart = dynamic(() => import("@/components/RankChart"), {
+  loading: () => <Skeleton className="h-[300px]" />,
+});
 
 export default function RankPage() {
   return (

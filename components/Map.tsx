@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
+import { MapPin } from "lucide-react";
 import { SEOUL_GU } from "@/lib/constants";
 
 export default function Map({ kakaoKey }: { kakaoKey: string }) {
@@ -157,7 +158,10 @@ export default function Map({ kakaoKey }: { kakaoKey: string }) {
     <div className="relative w-full h-full min-h-[400px] overflow-visible">
       {!loaded && (
         <div className="absolute inset-0 bg-muted rounded-lg flex items-center justify-center z-10">
-          <p className="text-muted-foreground">🗺️ 지도 로딩 중...</p>
+          <p className="text-muted-foreground flex items-center gap-2">
+            <MapPin className="size-4" />
+            지도 로딩 중...
+          </p>
         </div>
       )}
       <div

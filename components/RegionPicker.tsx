@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, memo } from "react";
 import { SEOUL_GU } from "@/lib/constants";
 import { ChevronDown, MapPin } from "lucide-react";
 
@@ -30,7 +30,7 @@ interface RegionPickerProps {
   onValueChange: (code: string) => void;
 }
 
-export default function RegionPicker({ value, onValueChange }: RegionPickerProps) {
+function RegionPickerComponent({ value, onValueChange }: RegionPickerProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -106,3 +106,5 @@ export default function RegionPicker({ value, onValueChange }: RegionPickerProps
     </div>
   );
 }
+
+export default memo(RegionPickerComponent);

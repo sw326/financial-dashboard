@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,9 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
 import { TrendingUp, TrendingDown } from "lucide-react";
-import type { StockQuote, ChartData } from "@/lib/types";
+import type { StockQuote } from "@/lib/types";
+import { useQuotes } from "@/hooks/use-quotes";
+import { useChart } from "@/hooks/use-chart";
 import { chartTooltipStyle } from "@/components/chart-tooltip";
 
 const PERIODS = ["1mo", "3mo", "6mo", "1y", "5y"] as const;
@@ -23,42 +25,21 @@ function StockContent() {
   const symbol = searchParams.get("symbol") ?? "";
 
   const [input, setInput] = useState(symbol);
-  const [quote, setQuote] = useState<StockQuote | null>(null);
-  const [chart, setChart] = useState<ChartData[]>([]);
   const [period, setPeriod] = useState<string>("6mo");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  // symbol이 URL에서 변경되면 input 리셋 (key 패턴)
+  const [prevSymbol, setPrevSymbol] = useState(symbol);
+  if (prevSymbol !== symbol) {
+    setPrevSymbol(symbol);
+    if (symbol) setInput(symbol);
+  }
 
-  const fetchData = useCallback(
-    async (sym: string, p: string) => {
-      if (!sym) return;
-      setLoading(true);
-      setError("");
-      try {
-        const [qRes, cRes] = await Promise.all([
-          fetch(`/api/finance/quote?symbols=${encodeURIComponent(sym)}`),
-          fetch(`/api/finance/chart?symbol=${encodeURIComponent(sym)}&period=${p}`),
-        ]);
-        const qData = await qRes.json();
-        const cData = await cRes.json();
-        if (Array.isArray(qData) && qData.length > 0) setQuote(qData[0]);
-        else setError("종목을 찾을 수 없습니다");
-        if (Array.isArray(cData)) setChart(cData);
-      } catch {
-        setError("데이터 로딩 실패");
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
+  // React Query hooks
+  const { data: quoteData = [], isLoading: quoteLoading, error: quoteError } = useQuotes(symbol ? [symbol] : []);
+  const { data: chart = [], isLoading: chartLoading } = useChart(symbol, period);
 
-  useEffect(() => {
-    if (symbol) {
-      setInput(symbol);
-      fetchData(symbol, period);
-    }
-  }, [symbol, period, fetchData]);
+  const quote = quoteData.length > 0 ? (quoteData[0] as unknown as StockQuote) : null;
+  const loading = quoteLoading || chartLoading;
+  const error = quoteError ? "데이터 로딩 실패" : (!quote && symbol && !quoteLoading ? "종목을 찾을 수 없습니다" : "");
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +55,10 @@ function StockContent() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">📈 종목 차트</h1>
+      <h1 className="text-2xl font-bold flex items-center gap-2">
+        <TrendingUp className="size-6 text-muted-foreground" />
+        종목 차트
+      </h1>
 
       {/* 검색 */}
       <form onSubmit={handleSearch} className="flex gap-2">
@@ -159,7 +143,7 @@ function StockContent() {
                     <YAxis domain={["auto", "auto"]} tick={{ fontSize: 11 }} tickFormatter={(v) => v.toLocaleString()} />
                     <Tooltip
                       formatter={(v) => [(v as number).toLocaleString(), "종가"]}
-                      labelFormatter={(l) => `📅 ${l}`}
+                      labelFormatter={(l) => l}
                       {...chartTooltipStyle}
                     />
                     <Line
@@ -189,7 +173,7 @@ function StockContent() {
                     <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => (v / 1e6).toFixed(0) + "M"} />
                     <Tooltip
                       formatter={(v) => [(v as number).toLocaleString(), "거래량"]}
-                      labelFormatter={(l) => `📅 ${l}`}
+                      labelFormatter={(l) => l}
                       {...chartTooltipStyle}
                     />
                     <Bar dataKey="volume" fill="#94a3b8" />

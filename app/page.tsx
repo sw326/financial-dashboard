@@ -1,14 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sparkline } from "@/components/sparkline";
-import { TrendingUp, TrendingDown } from "lucide-react";
-import type { MarketIndex, AptTrade } from "@/lib/types";
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  BarChart3, 
+  ArrowLeftRight, 
+  Home as HomeIcon, 
+  Map as MapIcon, 
+  ExternalLink,
+  LineChart,
+  ClipboardList,
+  Trophy
+} from "lucide-react";
+import { useQuotes } from "@/hooks/use-quotes";
+import { useRecentTrades } from "@/hooks/use-recent-trades";
 
 const Map = dynamic(() => import("@/components/Map"), { ssr: false });
 const KAKAO_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY || "";
@@ -40,11 +51,11 @@ const HIGHLIGHT_SYMBOLS = [
 const GANGNAM_CODE = "11680"; // 강남구
 
 const SHORTCUTS = [
-  { href: "/market", icon: "📊", label: "시장개요", group: "증시" },
-  { href: "/stock", icon: "📈", label: "종목차트", group: "증시" },
-  { href: "/trend", icon: "📉", label: "시세추이", group: "부동산" },
-  { href: "/recent", icon: "📋", label: "최근거래", group: "부동산" },
-  { href: "/rank", icon: "🏆", label: "순위", group: "부동산" },
+  { href: "/market", icon: BarChart3, label: "시장개요", group: "증시" },
+  { href: "/stock", icon: LineChart, label: "종목차트", group: "증시" },
+  { href: "/trend", icon: TrendingDown, label: "시세추이", group: "부동산" },
+  { href: "/recent", icon: ClipboardList, label: "최근거래", group: "부동산" },
+  { href: "/rank", icon: Trophy, label: "순위", group: "부동산" },
 ];
 
 /* ── 유틸 ── */
@@ -76,51 +87,11 @@ function generateSparklineData(changePercent: number): number[] {
 
 /* ── 페이지 ── */
 export default function Home() {
-  const [indices, setIndices] = useState<MarketIndex[]>([]);
-  const [commodities, setCommodities] = useState<MarketIndex[]>([]);
-  const [highlights, setHighlights] = useState<MarketIndex[]>([]);
-  const [trades, setTrades] = useState<AptTrade[]>([]);
-  const [loadIdx, setLoadIdx] = useState(true);
-  const [loadCom, setLoadCom] = useState(true);
-  const [loadHl, setLoadHl] = useState(true);
-  const [loadTrade, setLoadTrade] = useState(true);
-
-  useEffect(() => {
-    // 주요 지수
-    fetch(`/api/finance/quote?symbols=${INDEX_SYMBOLS.map((i) => i.symbol).join(",")}`)
-      .then((r) => r.json())
-      .then((d) => { if (Array.isArray(d)) setIndices(d); })
-      .catch(() => {})
-      .finally(() => setLoadIdx(false));
-
-    // 환율/원자재
-    fetch(`/api/finance/quote?symbols=${COMMODITY_SYMBOLS.map((i) => i.symbol).join(",")}`)
-      .then((r) => r.json())
-      .then((d) => { if (Array.isArray(d)) setCommodities(d); })
-      .catch(() => {})
-      .finally(() => setLoadCom(false));
-
-    // 증시 하이라이트
-    fetch(`/api/finance/quote?symbols=${HIGHLIGHT_SYMBOLS.join(",")}`)
-      .then((r) => r.json())
-      .then((d) => { if (Array.isArray(d)) setHighlights(d); })
-      .catch(() => {})
-      .finally(() => setLoadHl(false));
-
-    // 최근 부동산
-    fetch(`/api/trade?lawdCd=${GANGNAM_CODE}&dealYmd=${dealYmd()}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (d?.trades) {
-          const sorted = (d.trades as AptTrade[]).sort(
-            (a, b) => b.dealDay - a.dealDay || b.dealAmount - a.dealAmount
-          );
-          setTrades(sorted.slice(0, 5));
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoadTrade(false));
-  }, []);
+  // React Query hooks
+  const { data: indices = [], isLoading: loadIdx } = useQuotes(INDEX_SYMBOLS.map((i) => i.symbol));
+  const { data: commodities = [], isLoading: loadCom } = useQuotes(COMMODITY_SYMBOLS.map((i) => i.symbol));
+  const { data: highlights = [], isLoading: loadHl } = useQuotes(HIGHLIGHT_SYMBOLS);
+  const { data: trades = [], isLoading: loadTrade } = useRecentTrades(GANGNAM_CODE, dealYmd(), 5);
 
   const findIdx = (sym: string) => indices.find((i) => i.symbol === sym);
   const findCom = (sym: string) => commodities.find((i) => i.symbol === sym);
@@ -129,7 +100,10 @@ export default function Home() {
     <div className="space-y-6">
       {/* ── 1. 주요 지수 (with Sparkline) ── */}
       <section>
-        <h2 className="text-xl font-bold mb-4">📊 주요 지수</h2>
+        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <BarChart3 className="size-5 text-muted-foreground" />
+          주요 지수
+        </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {loadIdx
             ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-40" />)
@@ -171,7 +145,10 @@ export default function Home() {
 
       {/* ── 2. 환율/원자재 ── */}
       <section>
-        <h2 className="text-lg font-semibold mb-3">💱 환율 · 원자재</h2>
+        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+          <ArrowLeftRight className="size-5 text-muted-foreground" />
+          환율 · 원자재
+        </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
           {loadCom
             ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)
@@ -204,7 +181,10 @@ export default function Home() {
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>📈 증시 하이라이트</span>
+              <span className="flex items-center gap-2">
+                <TrendingUp className="size-5 text-muted-foreground" />
+                증시 하이라이트
+              </span>
               <Link href="/market" className="text-xs text-muted-foreground hover:text-foreground">
                 더보기 →
               </Link>
@@ -242,7 +222,10 @@ export default function Home() {
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>🏠 최근 부동산 거래</span>
+              <span className="flex items-center gap-2">
+                <HomeIcon className="size-5 text-muted-foreground" />
+                최근 부동산 거래
+              </span>
               <Link href="/recent?region=11680" className="text-xs text-muted-foreground hover:text-foreground">
                 더보기 →
               </Link>
@@ -283,7 +266,10 @@ export default function Home() {
       <section>
         <Card className="overflow-hidden hover:shadow-lg transition-shadow">
           <CardHeader>
-            <CardTitle>🗺️ 서울 부동산 지도</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <MapIcon className="size-5 text-muted-foreground" />
+              서울 부동산 지도
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="h-[400px]">
@@ -295,13 +281,16 @@ export default function Home() {
 
       {/* ── 5. 바로가기 ── */}
       <section>
-        <h2 className="text-lg font-semibold mb-3">🔗 바로가기</h2>
+        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+          <ExternalLink className="size-5 text-muted-foreground" />
+          바로가기
+        </h2>
         <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
-          {SHORTCUTS.map(({ href, icon, label }) => (
+          {SHORTCUTS.map(({ href, icon: Icon, label }) => (
             <Link key={href} href={href}>
               <Card className="hover:shadow-md transition-shadow cursor-pointer">
                 <CardContent className="p-4 text-center">
-                  <span className="text-3xl">{icon}</span>
+                  <Icon className="size-8 mx-auto text-muted-foreground" />
                   <p className="text-sm mt-2 font-medium">{label}</p>
                 </CardContent>
               </Card>

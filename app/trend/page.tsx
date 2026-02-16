@@ -1,6 +1,11 @@
 import { Suspense } from "react";
-import Charts from "@/components/Charts";
+import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/ui/skeleton";
 import FilterBar from "@/components/FilterBar";
+
+const Charts = dynamic(() => import("@/components/Charts"), {
+  loading: () => <Skeleton className="h-[350px]" />,
+});
 
 export default function TrendPage() {
   return (

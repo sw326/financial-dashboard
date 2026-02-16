@@ -1,5 +1,6 @@
 "use client"
 
+import { memo } from 'react'
 import { LineChart, Line, ResponsiveContainer, YAxis } from 'recharts'
 
 interface SparklineProps {
@@ -7,7 +8,7 @@ interface SparklineProps {
   color: string
 }
 
-export function Sparkline({ data, color }: SparklineProps) {
+export const Sparkline = memo(function Sparkline({ data, color }: SparklineProps) {
   const chartData = data.map((value, index) => ({ index, value }))
   
   return (
@@ -25,4 +26,4 @@ export function Sparkline({ data, color }: SparklineProps) {
       </LineChart>
     </ResponsiveContainer>
   )
-}
+})

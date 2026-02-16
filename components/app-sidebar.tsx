@@ -5,11 +5,12 @@ import { usePathname } from "next/navigation"
 import Link from "next/link"
 import {
   LayoutDashboard,
-  TrendingUp,
   BarChart3,
-  TrendingDown,
-  Clock,
-  Award,
+  LineChart,
+  TrendingUp,
+  ClipboardList,
+  Trophy,
+  Wallet,
 } from "lucide-react"
 
 import {
@@ -37,37 +38,37 @@ const navGroups = [
     ],
   },
   {
-    label: "📈 증시",
+    label: "증시",
     items: [
       {
         title: "시장개요",
         url: "/market",
-        icon: TrendingUp,
+        icon: BarChart3,
       },
       {
         title: "종목차트",
         url: "/stock",
-        icon: BarChart3,
+        icon: LineChart,
       },
     ],
   },
   {
-    label: "🏠 부동산",
+    label: "부동산",
     items: [
       {
         title: "시세추이",
         url: "/trend",
-        icon: TrendingDown,
+        icon: TrendingUp,
       },
       {
         title: "최근거래",
         url: "/recent",
-        icon: Clock,
+        icon: ClipboardList,
       },
       {
         title: "순위",
         url: "/rank",
-        icon: Award,
+        icon: Trophy,
       },
     ],
   },
@@ -81,7 +82,7 @@ export function AppSidebar() {
       <SidebarContent>
         <div className="px-3 py-4">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition-opacity">
-            <span>💰</span>
+            <Wallet className="size-5" />
             <span className="hidden lg:inline">Financial Dashboard</span>
             <span className="lg:hidden">FD</span>
           </Link>

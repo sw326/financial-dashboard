@@ -1,38 +1,25 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AptTrade } from "@/lib/types";
 import { getMonthsBack, periodToMonths, filterByArea, fetchTrades } from "@/lib/api";
 
 export function useTrades(guCode: string, period: string, areaFilter: string) {
-  const [trades, setTrades] = useState<AptTrade[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-  const [initialLoad, setInitialLoad] = useState(true);
+  const months = getMonthsBack(periodToMonths(period));
+  
+  const { data, isLoading, error: queryError } = useQuery<AptTrade[]>({
+    queryKey: ["trades", guCode, period, areaFilter],
+    queryFn: async () => {
+      const data = await fetchTrades(guCode, months);
+      return filterByArea(data, areaFilter);
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: !!guCode,
+  });
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const months = getMonthsBack(periodToMonths(period));
-
-    startTransition(async () => {
-      try {
-        const data = await fetchTrades(guCode, months);
-        if (!cancelled) {
-          setTrades(filterByArea(data, areaFilter));
-          setError(null);
-          setInitialLoad(false);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Unknown error");
-          setInitialLoad(false);
-        }
-      }
-    });
-
-    return () => { cancelled = true; };
-  }, [guCode, period, areaFilter]);
-
-  return { trades, loading: isPending || initialLoad, error };
+  return {
+    trades: data || [],
+    loading: isLoading,
+    error: queryError ? (queryError instanceof Error ? queryError.message : "Unknown error") : null,
+  };
 }
