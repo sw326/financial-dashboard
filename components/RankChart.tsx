@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
+import { useTheme } from "next-themes";
 import {
   BarChart,
   Bar,
@@ -38,9 +39,10 @@ function aggregateByApt(trades: AptTrade[]) {
 }
 
 // 순위에 따라 opacity로 차이를 주는 단색 바
-function getBarFill(index: number, total: number): string {
+function getBarFill(index: number, total: number, isDark: boolean): string {
   const opacity = 1 - (index / total) * 0.6; // 1위: 100%, 마지막: 40%
-  return `hsl(var(--foreground) / ${opacity})`;
+  const base = isDark ? "255,255,255" : "0,0,0";
+  return `rgba(${base},${opacity})`;
 }
 
 export default function RankChart() {
@@ -49,8 +51,14 @@ export default function RankChart() {
   const area = searchParams.get("area") || "all";
   const period = searchParams.get("period") || "1y";
 
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
   const { trades, loading, error } = useTrades(region, period, area);
   const rankData = useMemo(() => aggregateByApt(trades), [trades]);
+
+  const axisStroke = isDark ? "#888" : "#666";
+  const gridStroke = isDark ? "#333" : "#e5e5e5";
+  const textFill = isDark ? "#e5e5e5" : "#1a1a1a";
 
   if (loading) {
     return <Skeleton className="w-full h-[600px] rounded-lg" />;
@@ -80,15 +88,15 @@ export default function RankChart() {
       <CardContent>
         <ResponsiveContainer width="100%" height={Math.max(400, rankData.length * 36)}>
           <BarChart data={rankData} layout="vertical" margin={{ left: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis type="number" tickFormatter={formatAmount} fontSize={12} stroke="hsl(var(--muted-foreground))" />
+            <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+            <XAxis type="number" tickFormatter={formatAmount} fontSize={12} stroke={axisStroke} tick={{ fill: textFill }} />
             <YAxis
               type="category"
               dataKey="name"
               width={120}
               fontSize={11}
-              stroke="hsl(var(--muted-foreground))"
-              tick={{ fill: "hsl(var(--foreground))" }}
+              stroke={axisStroke}
+              tick={{ fill: textFill }}
             />
             <Tooltip
               formatter={(v) => [formatAmount(Number(v)), "평균 거래가"]}
@@ -106,7 +114,7 @@ export default function RankChart() {
             />
             <Bar dataKey="avgPrice" name="평균 거래가" radius={[0, 4, 4, 0]}>
               {rankData.map((_, i) => (
-                <Cell key={i} fill={getBarFill(i, rankData.length)} />
+                <Cell key={i} fill={getBarFill(i, rankData.length, isDark)} />
               ))}
             </Bar>
           </BarChart>

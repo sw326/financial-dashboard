@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
+import { useTheme } from "next-themes";
 import {
   AreaChart,
   Area,
@@ -45,8 +46,15 @@ export default function Charts() {
   const area = searchParams.get("area") || "all";
   const period = searchParams.get("period") || "6m";
 
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
   const { trades, loading, error } = useTrades(region, period, area);
   const chartData = useMemo(() => aggregateByMonth(trades), [trades]);
+
+  // Recharts SVG는 CSS 변수가 안 먹힐 수 있어서 직접 색상 지정
+  const barFill = isDark ? "#e5e5e5" : "#1a1a1a";
+  const axisStroke = isDark ? "#888" : "#666";
+  const gridStroke = isDark ? "#333" : "#e5e5e5";
 
   if (loading) {
     return (
@@ -88,9 +96,9 @@ export default function Charts() {
                   <stop offset="95%" stopColor="var(--color-up)" stopOpacity={0.05} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="month" fontSize={12} stroke="hsl(var(--muted-foreground))" />
-              <YAxis tickFormatter={formatAmount} fontSize={12} domain={["auto", "auto"]} stroke="hsl(var(--muted-foreground))" />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+              <XAxis dataKey="month" fontSize={12} stroke={axisStroke} />
+              <YAxis tickFormatter={formatAmount} fontSize={12} domain={["auto", "auto"]} stroke={axisStroke} />
               <Tooltip
                 formatter={(v) => [formatAmount(Number(v)), "평균 거래가"]}
                 {...chartTooltipStyle}
@@ -119,9 +127,9 @@ export default function Charts() {
         <CardContent>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="month" fontSize={12} stroke="hsl(var(--muted-foreground))" />
-              <YAxis fontSize={12} stroke="hsl(var(--muted-foreground))" />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+              <XAxis dataKey="month" fontSize={12} stroke={axisStroke} />
+              <YAxis fontSize={12} stroke={axisStroke} />
               <Tooltip
                 formatter={(v) => [`${v}건`, "거래량"]}
                 {...chartTooltipStyle}
@@ -129,7 +137,7 @@ export default function Charts() {
               <Bar
                 dataKey="count"
                 name="거래 건수"
-                fill="hsl(var(--foreground))"
+                fill={barFill}
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>
