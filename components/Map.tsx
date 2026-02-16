@@ -64,6 +64,8 @@ export default function Map({ kakaoKey }: { kakaoKey: string }) {
       const iconList = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${fg}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h.01"/><path d="M7 12h.01"/><path d="M7 17h.01"/><path d="M12 7h5"/><path d="M12 12h5"/><path d="M12 17h5"/></svg>`;
       const iconTrophy = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${fg}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>`;
 
+      // 다크모드에서 맵에 invert 필터가 걸리므로 오버레이에 역반전 적용
+      const counterFilter = isDark ? "filter: invert(1) hue-rotate(180deg);" : "";
       const overlayContent = `
         <div style="
           padding: 14px 16px;
@@ -73,6 +75,7 @@ export default function Map({ kakaoKey }: { kakaoKey: string }) {
           line-height: 1.6;
           background: ${bg};
           color: ${fg};
+          ${counterFilter}
           border: 1px solid ${border};
           border-radius: 10px;
           box-shadow: 0 4px 16px rgba(0,0,0,0.3);
