@@ -37,6 +37,10 @@ export async function GET(req: NextRequest) {
     const quotes = result.quotes ?? result.indicators?.quote?.[0] ?? [];
     const data = (Array.isArray(quotes) ? quotes : []).map((q: Record<string, unknown>) => ({
       date: new Date(q.date as string).toISOString().slice(0, 10),
+      time: Math.floor(new Date(q.date as string).getTime() / 1000), // unix timestamp (lightweight-charts 필요)
+      open: (q.open as number) ?? 0,
+      high: (q.high as number) ?? 0,
+      low: (q.low as number) ?? 0,
       close: (q.close as number) ?? 0,
       volume: (q.volume as number) ?? 0,
     }));

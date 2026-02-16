@@ -1,14 +1,18 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import type { StockQuote } from "@/lib/types";
 import { useQuotes } from "@/hooks/use-quotes";
-import { TradingViewChart } from "@/components/tradingview-chart";
+import { useChart } from "@/hooks/use-chart";
+import { LightweightChart } from "@/components/lightweight-chart";
+
+const PERIODS = ["1mo", "3mo", "6mo", "1y", "5y"] as const;
 
 interface Props {
   params: Promise<{ symbol: string }>;
@@ -24,7 +28,9 @@ export default function StockDetailPage({ params }: Props) {
 
 function StockDetailContent({ symbol }: { symbol: string }) {
   // React Query hooks
+  const [period, setPeriod] = useState("6mo");
   const { data: quoteData = [], isLoading: quoteLoading, error: quoteError } = useQuotes([symbol]);
+  const { data: chartData = [], isLoading: chartLoading } = useChart(symbol, period);
 
   const quote = quoteData.length > 0 ? (quoteData[0] as unknown as StockQuote) : null;
   const loading = quoteLoading;
@@ -83,11 +89,18 @@ function StockDetailContent({ symbol }: { symbol: string }) {
         </TabsList>
 
         {/* 차트 탭 */}
-        <TabsContent value="chart">
+        <TabsContent value="chart" className="space-y-4">
+          <ToggleGroup type="single" value={period} onValueChange={(v) => v && setPeriod(v)}>
+            {PERIODS.map((p) => (
+              <ToggleGroupItem key={p} value={p} className="px-4">
+                {p}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-b-lg">
               <div className="h-[450px] md:h-[600px]">
-                <TradingViewChart symbol={symbol} />
+                <LightweightChart data={chartData} loading={chartLoading} />
               </div>
             </CardContent>
           </Card>
