@@ -105,14 +105,15 @@ export default function RankChart() {
                 return `${item?.fullName ?? label} (${item?.count ?? 0}건)`;
               }}
               contentStyle={{
-                backgroundColor: "hsl(var(--card))",
-                border: "1px solid hsl(var(--border))",
+                backgroundColor: isDark ? "#1a1a1a" : "#fff",
+                border: `1px solid ${isDark ? "#333" : "#e5e5e5"}`,
                 borderRadius: "8px",
-                color: "hsl(var(--card-foreground))",
+                color: textFill,
               }}
-              labelStyle={{ color: "hsl(var(--muted-foreground))" }}
+              labelStyle={{ color: textFill }}
+              itemStyle={{ color: textFill }}
             />
-            <Bar dataKey="avgPrice" name="평균 거래가" radius={[0, 4, 4, 0]}>
+            <Bar dataKey="avgPrice" name="평균 거래가" radius={[0, 4, 4, 0]} activeBar={false}>
               {rankData.map((_, i) => (
                 <Cell key={i} fill={getBarFill(i, rankData.length, isDark)} />
               ))}

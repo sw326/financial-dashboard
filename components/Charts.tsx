@@ -101,7 +101,14 @@ export default function Charts() {
               <YAxis tickFormatter={formatAmount} fontSize={12} domain={["auto", "auto"]} stroke={axisStroke} />
               <Tooltip
                 formatter={(v) => [formatAmount(Number(v)), "평균 거래가"]}
-                {...chartTooltipStyle}
+                contentStyle={{
+                  backgroundColor: isDark ? "#1a1a1a" : "#fff",
+                  border: `1px solid ${gridStroke}`,
+                  borderRadius: "8px",
+                  color: barFill,
+                }}
+                labelStyle={{ color: barFill }}
+                itemStyle={{ color: barFill }}
               />
               <Legend />
               <Area
@@ -132,13 +139,21 @@ export default function Charts() {
               <YAxis fontSize={12} stroke={axisStroke} />
               <Tooltip
                 formatter={(v) => [`${v}건`, "거래량"]}
-                {...chartTooltipStyle}
+                contentStyle={{
+                  backgroundColor: isDark ? "#1a1a1a" : "#fff",
+                  border: `1px solid ${gridStroke}`,
+                  borderRadius: "8px",
+                  color: barFill,
+                }}
+                labelStyle={{ color: barFill }}
+                itemStyle={{ color: barFill }}
               />
               <Bar
                 dataKey="count"
                 name="거래 건수"
                 fill={barFill}
                 radius={[4, 4, 0, 0]}
+                activeBar={false}
               />
             </BarChart>
           </ResponsiveContainer>
