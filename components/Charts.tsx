@@ -129,7 +129,7 @@ export default function Charts() {
               <Bar
                 dataKey="count"
                 name="거래 건수"
-                fill="hsl(var(--chart-2))"
+                fill="hsl(var(--foreground))"
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>

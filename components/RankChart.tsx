@@ -37,13 +37,11 @@ function aggregateByApt(trades: AptTrade[]) {
     .slice(0, 20);
 }
 
-const COLORS = [
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
-];
+// 순위에 따라 opacity로 차이를 주는 단색 바
+function getBarFill(index: number, total: number): string {
+  const opacity = 1 - (index / total) * 0.6; // 1위: 100%, 마지막: 40%
+  return `hsl(var(--foreground) / ${opacity})`;
+}
 
 export default function RankChart() {
   const searchParams = useSearchParams();
@@ -108,7 +106,7 @@ export default function RankChart() {
             />
             <Bar dataKey="avgPrice" name="평균 거래가" radius={[0, 4, 4, 0]}>
               {rankData.map((_, i) => (
-                <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                <Cell key={i} fill={getBarFill(i, rankData.length)} />
               ))}
             </Bar>
           </BarChart>
