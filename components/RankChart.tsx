@@ -45,9 +45,9 @@ function getBarFill(index: number, total: number, isDark: boolean): string {
   return `rgba(${base},${opacity})`;
 }
 
-export default function RankChart() {
+export default function RankChart({ region: propRegion }: { region?: string } = {}) {
   const searchParams = useSearchParams();
-  const region = searchParams.get("region") || "11680";
+  const region = propRegion || searchParams.get("region") || "11680";
   const area = searchParams.get("area") || "all";
   const period = searchParams.get("period") || "1y";
 

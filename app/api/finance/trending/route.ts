@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import yahooFinance from "yahoo-finance2";
+import YahooFinance from "yahoo-finance2";
+
+const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
 // 주요 한국/미국 종목 리스트 (하드코딩)
 const MAJOR_STOCKS = [
@@ -48,9 +50,9 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const tab = searchParams.get("tab") || "hot";
 
-    // 모든 주요 종목의 quote 조회
-    const quotesResult = await yahooFinance.quote(MAJOR_STOCKS);
-    const quotes = Array.isArray(quotesResult) ? quotesResult : [quotesResult];
+    // 모든 주요 종목의 quote 개별 조회 (v3에서는 배열 지원 불안정)
+    const quotePromises = MAJOR_STOCKS.map((s) => yf.quote(s).catch(() => null));
+    const quotes = (await Promise.all(quotePromises)).filter(Boolean);
 
     // 유효한 데이터만 필터링
     const validQuotes = (quotes as QuoteData[])

@@ -39,9 +39,9 @@ function aggregateByMonth(trades: AptTrade[]) {
     }));
 }
 
-export default function Charts() {
+export default function Charts({ region: propRegion }: { region?: string } = {}) {
   const searchParams = useSearchParams();
-  const region = searchParams.get("region") || "11680";
+  const region = propRegion || searchParams.get("region") || "11680";
   const area = searchParams.get("area") || "all";
   const period = searchParams.get("period") || "6m";
 

@@ -5,7 +5,7 @@ import { useTheme } from "next-themes";
 import { MapPin } from "lucide-react";
 import { SEOUL_GU } from "@/lib/constants";
 
-export default function Map({ kakaoKey }: { kakaoKey: string }) {
+export default function Map({ kakaoKey, region }: { kakaoKey: string; region?: string }) {
   const { resolvedTheme } = useTheme();
   const mapRef = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(() =>
@@ -33,9 +33,15 @@ export default function Map({ kakaoKey }: { kakaoKey: string }) {
   useEffect(() => {
     if (!loaded || !mapRef.current) return;
 
+    // region이 지정되면 해당 구 중심으로, 아니면 서울 전체
+    const targetGu = region ? SEOUL_GU.find(g => g.code === region) : null;
+    const centerLat = targetGu?.lat ?? 37.5665;
+    const centerLng = targetGu?.lng ?? 126.978;
+    const zoomLevel = targetGu ? 5 : 8;
+
     const map = new window.kakao.maps.Map(mapRef.current, {
-      center: new window.kakao.maps.LatLng(37.5665, 126.978),
-      level: 8,
+      center: new window.kakao.maps.LatLng(centerLat, centerLng),
+      level: zoomLevel,
     });
 
     const isDark = resolvedTheme === "dark";
@@ -156,7 +162,7 @@ export default function Map({ kakaoKey }: { kakaoKey: string }) {
         }
       });
     });
-  }, [loaded, resolvedTheme]);
+  }, [loaded, resolvedTheme, region]);
 
   if (error) {
     return (

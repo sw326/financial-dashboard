@@ -1,6 +1,6 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   Table,
@@ -16,9 +16,10 @@ import { formatAmount } from "@/lib/utils";
 
 type SortKey = "amount" | "date";
 
-export default function TradeTable() {
+export default function TradeTable({ region: propRegion }: { region?: string } = {}) {
   const searchParams = useSearchParams();
-  const region = searchParams.get("region") || "11680";
+  const router = useRouter();
+  const region = propRegion || searchParams.get("region") || "11680";
   const area = searchParams.get("area") || "all";
 
   const { trades, loading, error } = useTrades(region, "3m", area);
@@ -94,7 +95,11 @@ export default function TradeTable() {
         </TableHeader>
         <TableBody>
           {sorted.slice(0, 100).map((t, i) => (
-            <TableRow key={i} className="hover:bg-muted/50">
+            <TableRow 
+              key={i} 
+              className="hover:bg-muted/50 cursor-pointer"
+              onClick={() => router.push(`/real-estate/${region}`)}
+            >
               <TableCell className="font-medium">{t.aptName}</TableCell>
               <TableCell>{t.dong}</TableCell>
               <TableCell className="text-right tabular-nums">{t.area.toFixed(1)}</TableCell>
