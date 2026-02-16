@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sparkline } from "@/components/sparkline";
+import { TrendingUp, TrendingDown } from "lucide-react";
 import type { MarketIndex, AptTrade } from "@/lib/types";
 
 const Map = dynamic(() => import("@/components/Map"), { ssr: false });
@@ -129,9 +130,9 @@ export default function Home() {
       {/* ── 1. 주요 지수 (with Sparkline) ── */}
       <section>
         <h2 className="text-xl font-bold mb-4">📊 주요 지수</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {loadIdx
-            ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32" />)
+            ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-40" />)
             : INDEX_SYMBOLS.map(({ symbol, label }) => {
                 const d = findIdx(symbol);
                 if (!d) return null;
@@ -139,21 +140,29 @@ export default function Home() {
                 
                 return (
                   <Card key={symbol} className="hover:shadow-lg transition-shadow">
-                    <CardContent className="p-4">
-                      <p className="text-sm text-muted-foreground mb-2">{label}</p>
-                      <p className="text-2xl font-bold mb-1">{fmt(d.price)}</p>
-                      <div className="flex items-center gap-2 mb-3">
+                    <CardHeader className="flex-row items-start justify-between space-y-0">
+                      <div className="space-y-1">
+                        <CardDescription>{label}</CardDescription>
+                        <CardTitle className="text-2xl font-semibold tabular-nums">{fmt(d.price)}</CardTitle>
+                      </div>
+                      <CardAction>
                         <Badge variant="outline" className={`text-sm font-semibold ${colorClass(d.changePercent)}`}>
+                          {d.changePercent >= 0 ? <TrendingUp className="size-4 mr-1" /> : <TrendingDown className="size-4 mr-1" />}
                           {sign(d.changePercent)}{d.changePercent.toFixed(2)}%
                         </Badge>
-                        <span className={`text-sm ${colorClass(d.changePercent)}`}>
-                          {sign(d.change)}{fmt(d.change)}
-                        </span>
-                      </div>
+                      </CardAction>
+                    </CardHeader>
+                    <CardContent>
                       <div className="h-12 -mx-2">
                         <Sparkline data={sparkData} color={colorValue(d.changePercent)} />
                       </div>
                     </CardContent>
+                    <CardFooter className="flex-col items-start gap-1 text-sm">
+                      <div className={`flex gap-2 font-medium ${colorClass(d.change)}`}>
+                        {sign(d.change)}{fmt(d.change)}
+                      </div>
+                      <div className="text-muted-foreground">전일 대비</div>
+                    </CardFooter>
                   </Card>
                 );
               })}
@@ -163,21 +172,26 @@ export default function Home() {
       {/* ── 2. 환율/원자재 ── */}
       <section>
         <h2 className="text-lg font-semibold mb-3">💱 환율 · 원자재</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
           {loadCom
-            ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20" />)
+            ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)
             : COMMODITY_SYMBOLS.map(({ symbol, label }) => {
                 const d = findCom(symbol);
                 if (!d) return null;
                 return (
                   <Card key={symbol} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-3">
-                      <p className="text-xs text-muted-foreground mb-1">{label}</p>
-                      <p className="text-lg font-bold">{fmt(d.price)}</p>
+                    <CardHeader className="flex-row items-start justify-between space-y-0 pb-2">
+                      <div className="space-y-1">
+                        <CardDescription>{label}</CardDescription>
+                        <CardTitle className="text-xl font-semibold tabular-nums">{fmt(d.price)}</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardFooter className="pt-2">
                       <Badge variant="outline" className={`text-xs ${colorClass(d.changePercent)}`}>
+                        {d.changePercent >= 0 ? <TrendingUp className="size-3 mr-1" /> : <TrendingDown className="size-3 mr-1" />}
                         {sign(d.changePercent)}{d.changePercent.toFixed(2)}%
                       </Badge>
-                    </CardContent>
+                    </CardFooter>
                   </Card>
                 );
               })}
@@ -185,7 +199,7 @@ export default function Home() {
       </section>
 
       {/* ── 3. 증시 하이라이트 + 부동산 최근 거래 ── */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* 증시 하이라이트 */}
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
@@ -211,8 +225,9 @@ export default function Home() {
                   >
                     <span className="text-sm font-medium truncate flex-1">{s.name}</span>
                     <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-sm font-bold">{fmt(s.price, 0)}</span>
-                      <Badge variant="outline" className={`text-xs ${colorClass(s.changePercent)} min-w-[60px] justify-center`}>
+                      <span className="text-sm font-bold tabular-nums">{fmt(s.price, 0)}</span>
+                      <Badge variant="outline" className={`text-xs ${colorClass(s.changePercent)} min-w-[68px] justify-center`}>
+                        {s.changePercent >= 0 ? <TrendingUp className="size-3 mr-1" /> : <TrendingDown className="size-3 mr-1" />}
                         {sign(s.changePercent)}{s.changePercent.toFixed(2)}%
                       </Badge>
                     </div>
@@ -243,16 +258,16 @@ export default function Home() {
             ) : (
               <div className="space-y-3">
                 {trades.map((t, i) => (
-                  <div key={i} className="flex items-start justify-between pb-3 border-b last:border-0">
+                  <div key={i} className="flex items-start justify-between pb-3 border-b last:border-0 hover:bg-muted/30 -mx-2 px-2 py-2 rounded transition-colors">
                     <div className="flex-1">
                       <p className="text-sm font-semibold">{t.aptName}</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {t.dong} · {t.area.toFixed(1)}㎡ · {t.floor}층
+                        {t.dong} · <span className="tabular-nums">{t.area.toFixed(1)}㎡</span> · {t.floor}층
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-bold">{t.dealAmount.toLocaleString()}만원</p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-sm font-bold tabular-nums">{t.dealAmount.toLocaleString()}만원</p>
+                      <p className="text-xs text-muted-foreground mt-1 tabular-nums">
                         {t.dealMonth}/{t.dealDay}
                       </p>
                     </div>

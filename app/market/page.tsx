@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LineChart, Line, ResponsiveContainer, YAxis } from "recharts";
+import { TrendingUp, TrendingDown } from "lucide-react";
 import type { MarketIndex, ChartData } from "@/lib/types";
 
 const INDICES = [
@@ -73,18 +74,21 @@ export default function MarketPage() {
       {/* 환율 */}
       {fx && (
         <Card>
-          <CardContent className="py-3 flex items-center gap-4">
-            <span className="font-medium">💱 USD/KRW</span>
-            <span className="text-lg font-bold">{fx.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+          <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
+            <div className="flex items-baseline gap-4">
+              <CardDescription>💱 USD/KRW</CardDescription>
+              <CardTitle className="text-xl font-semibold tabular-nums">{fx.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}</CardTitle>
+            </div>
             <Badge variant="outline" className={color(fx.change)}>
+              {fx.change >= 0 ? <TrendingUp className="size-3 mr-1" /> : <TrendingDown className="size-3 mr-1" />}
               {sign(fx.change)}{fx.change.toFixed(2)} ({sign(fx.changePercent)}{fx.changePercent.toFixed(2)}%)
             </Badge>
-          </CardContent>
+          </CardHeader>
         </Card>
       )}
 
       {/* 주요 지수 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {INDICES.map(({ symbol, name }) => {
           const idx = indices.find((i) => i.symbol === symbol);
           const spark = sparklines[symbol];
@@ -95,23 +99,21 @@ export default function MarketPage() {
               className="cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => router.push(`/stock?symbol=${encodeURIComponent(symbol)}`)}
             >
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex justify-between items-center">
-                  <span>{name}</span>
+              <CardHeader className="flex-row items-start justify-between space-y-0">
+                <div className="space-y-1">
+                  <CardDescription>{name}</CardDescription>
+                  <CardTitle className="text-2xl font-semibold tabular-nums">
+                    {idx.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  </CardTitle>
+                </div>
+                <CardAction>
                   <Badge variant="outline" className={color(idx.change)}>
+                    {idx.change >= 0 ? <TrendingUp className="size-4 mr-1" /> : <TrendingDown className="size-4 mr-1" />}
                     {sign(idx.changePercent)}{idx.changePercent.toFixed(2)}%
                   </Badge>
-                </CardTitle>
+                </CardAction>
               </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold">
-                    {idx.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                  </span>
-                  <span className={`text-sm ${color(idx.change)}`}>
-                    {sign(idx.change)}{idx.change.toFixed(2)}
-                  </span>
-                </div>
+              <CardContent>
                 {spark && spark.length > 0 && (
                   <ResponsiveContainer width="100%" height={40}>
                     <LineChart data={spark}>
@@ -127,6 +129,12 @@ export default function MarketPage() {
                   </ResponsiveContainer>
                 )}
               </CardContent>
+              <CardFooter className="flex-col items-start gap-1 text-sm">
+                <div className={`flex gap-2 font-medium ${color(idx.change)}`}>
+                  {sign(idx.change)}{idx.change.toFixed(2)}
+                </div>
+                <div className="text-muted-foreground">전일 대비</div>
+              </CardFooter>
             </Card>
           );
         })}

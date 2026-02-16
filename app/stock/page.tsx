@@ -2,12 +2,16 @@
 
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
+import { TrendingUp, TrendingDown } from "lucide-react";
 import type { StockQuote, ChartData } from "@/lib/types";
 import { chartTooltipStyle } from "@/components/chart-tooltip";
 
@@ -74,15 +78,13 @@ function StockContent() {
 
       {/* 검색 */}
       <form onSubmit={handleSearch} className="flex gap-2">
-        <input
-          className="flex-1 border rounded-md px-3 py-2 text-sm"
+        <Input
+          className="flex-1"
           placeholder="종목 심볼 입력 (예: 005930.KS, AAPL, ^KS11)"
           value={input}
           onChange={(e) => setInput(e.target.value)}
         />
-        <button type="submit" className="px-4 py-2 bg-foreground text-background rounded-md text-sm font-medium">
-          검색
-        </button>
+        <Button type="submit">검색</Button>
       </form>
 
       {error && <p className="text-red-500">{error}</p>}
@@ -98,43 +100,53 @@ function StockContent() {
         <>
           {/* 기본 정보 */}
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-3">
-                <span>{quote.name}</span>
-                <span className="text-sm text-muted-foreground">{quote.symbol}</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-baseline gap-3 mb-4">
-                <span className="text-3xl font-bold">{fmt(quote.price)}</span>
-                <Badge variant="outline" className={color(quote.change)}>
+            <CardHeader className="flex-row items-start justify-between space-y-0">
+              <div className="space-y-2">
+                <CardDescription>{quote.symbol}</CardDescription>
+                <CardTitle className="text-3xl font-semibold tabular-nums">{fmt(quote.price)}</CardTitle>
+                <div className="text-lg font-medium">{quote.name}</div>
+              </div>
+              <CardAction>
+                <Badge variant="outline" className={`text-sm ${color(quote.change)}`}>
+                  {quote.change >= 0 ? <TrendingUp className="size-4 mr-1" /> : <TrendingDown className="size-4 mr-1" />}
                   {sign(quote.change)}{quote.change.toFixed(2)} ({sign(quote.changePercent)}{quote.changePercent.toFixed(2)}%)
                 </Badge>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                <div><span className="text-muted-foreground">시가총액</span><br />{quote.marketCap ? (quote.marketCap / 1e8).toLocaleString(undefined, { maximumFractionDigits: 0 }) + "억" : "-"}</div>
-                <div><span className="text-muted-foreground">PER</span><br />{fmt(quote.per)}</div>
-                <div><span className="text-muted-foreground">52주 고가</span><br />{fmt(quote.high52w)}</div>
-                <div><span className="text-muted-foreground">52주 저가</span><br />{fmt(quote.low52w)}</div>
-                <div><span className="text-muted-foreground">배당률</span><br />{quote.dividendYield != null ? quote.dividendYield.toFixed(2) + "%" : "-"}</div>
+              </CardAction>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                <div>
+                  <div className="text-muted-foreground mb-1">시가총액</div>
+                  <div className="font-medium tabular-nums">{quote.marketCap ? (quote.marketCap / 1e8).toLocaleString(undefined, { maximumFractionDigits: 0 }) + "억" : "-"}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground mb-1">PER</div>
+                  <div className="font-medium tabular-nums">{fmt(quote.per)}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground mb-1">52주 고가</div>
+                  <div className="font-medium tabular-nums">{fmt(quote.high52w)}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground mb-1">52주 저가</div>
+                  <div className="font-medium tabular-nums">{fmt(quote.low52w)}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground mb-1">배당률</div>
+                  <div className="font-medium tabular-nums">{quote.dividendYield != null ? quote.dividendYield.toFixed(2) + "%" : "-"}</div>
+                </div>
               </div>
             </CardContent>
           </Card>
 
           {/* 기간 선택 */}
-          <div className="flex gap-2">
+          <ToggleGroup type="single" value={period} onValueChange={(v) => v && setPeriod(v)}>
             {PERIODS.map((p) => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={`px-3 py-1 rounded-md text-sm font-medium ${
-                  period === p ? "bg-foreground text-background" : "bg-muted text-muted-foreground"
-                }`}
-              >
+              <ToggleGroupItem key={p} value={p} className="px-4">
                 {p}
-              </button>
+              </ToggleGroupItem>
             ))}
-          </div>
+          </ToggleGroup>
 
           {/* 가격 차트 */}
           {chart.length > 0 && (

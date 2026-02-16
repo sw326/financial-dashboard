@@ -94,15 +94,15 @@ export default function TradeTable() {
         </TableHeader>
         <TableBody>
           {sorted.slice(0, 100).map((t, i) => (
-            <TableRow key={i}>
+            <TableRow key={i} className="hover:bg-muted/50">
               <TableCell className="font-medium">{t.aptName}</TableCell>
               <TableCell>{t.dong}</TableCell>
-              <TableCell className="text-right">{t.area.toFixed(1)}</TableCell>
-              <TableCell className="text-right">{t.floor}</TableCell>
-              <TableCell className="text-right font-semibold">
+              <TableCell className="text-right tabular-nums">{t.area.toFixed(1)}</TableCell>
+              <TableCell className="text-right tabular-nums">{t.floor}</TableCell>
+              <TableCell className="text-right font-semibold tabular-nums">
                 {formatAmount(t.dealAmount)}
               </TableCell>
-              <TableCell className="text-right">
+              <TableCell className="text-right tabular-nums">
                 {t.dealYear}.{String(t.dealMonth).padStart(2, "0")}.{String(t.dealDay).padStart(2, "0")}
               </TableCell>
             </TableRow>

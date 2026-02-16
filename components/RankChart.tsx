@@ -13,6 +13,7 @@ import {
   Cell,
 } from "recharts";
 import { useTrades } from "@/hooks/useTrades";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatAmount } from "@/lib/utils";
 import { AptTrade } from "@/lib/types";
@@ -74,33 +75,37 @@ export default function RankChart() {
   }
 
   return (
-    <div className="bg-card rounded-lg border p-4">
-      <h3 className="text-sm font-medium mb-4">아파트별 평균 거래가 Top 20</h3>
-      <ResponsiveContainer width="100%" height={Math.max(400, rankData.length * 36)}>
-        <BarChart data={rankData} layout="vertical" margin={{ left: 20 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis type="number" tickFormatter={formatAmount} fontSize={12} />
-          <YAxis
-            type="category"
-            dataKey="name"
-            width={120}
-            fontSize={11}
-            tick={{ fill: "hsl(var(--foreground))" }}
-          />
-          <Tooltip
-            formatter={(v) => [formatAmount(Number(v)), "평균 거래가"]}
-            labelFormatter={(label) => {
-              const item = rankData.find((d) => d.name === label);
-              return `${item?.fullName ?? label} (${item?.count ?? 0}건)`;
-            }}
-          />
-          <Bar dataKey="avgPrice" name="평균 거래가" radius={[0, 4, 4, 0]}>
-            {rankData.map((_, i) => (
-              <Cell key={i} fill={COLORS[i % COLORS.length]} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">아파트별 평균 거래가 Top 20</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={Math.max(400, rankData.length * 36)}>
+          <BarChart data={rankData} layout="vertical" margin={{ left: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis type="number" tickFormatter={formatAmount} fontSize={12} />
+            <YAxis
+              type="category"
+              dataKey="name"
+              width={120}
+              fontSize={11}
+              tick={{ fill: "hsl(var(--foreground))" }}
+            />
+            <Tooltip
+              formatter={(v) => [formatAmount(Number(v)), "평균 거래가"]}
+              labelFormatter={(label) => {
+                const item = rankData.find((d) => d.name === label);
+                return `${item?.fullName ?? label} (${item?.count ?? 0}건)`;
+              }}
+            />
+            <Bar dataKey="avgPrice" name="평균 거래가" radius={[0, 4, 4, 0]}>
+              {rankData.map((_, i) => (
+                <Cell key={i} fill={COLORS[i % COLORS.length]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
   );
 }

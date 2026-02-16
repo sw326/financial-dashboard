@@ -15,6 +15,7 @@ import {
   Legend,
 } from "recharts";
 import { useTrades } from "@/hooks/useTrades";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatAmount } from "@/lib/utils";
 import { AptTrade } from "@/lib/types";
@@ -73,60 +74,68 @@ export default function Charts() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-card rounded-lg border p-4">
-        <h3 className="text-sm font-medium mb-4">평균 거래가 추이</h3>
-        <ResponsiveContainer width="100%" height={350}>
-          <AreaChart data={chartData}>
-            <defs>
-              <linearGradient id="avgPriceGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--color-up)" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="var(--color-up)" stopOpacity={0.05} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis dataKey="month" fontSize={12} />
-            <YAxis tickFormatter={formatAmount} fontSize={12} domain={["auto", "auto"]} />
-            <Tooltip
-              formatter={(v) => [formatAmount(Number(v)), "평균 거래가"]}
-              {...chartTooltipStyle}
-            />
-            <Legend />
-            <Area
-              type="monotone"
-              dataKey="avgPrice"
-              name="평균 거래가(만원)"
-              stroke="var(--color-up)"
-              strokeWidth={2.5}
-              fill="url(#avgPriceGradient)"
-              dot={{ r: 4, fill: "var(--color-up)" }}
-              activeDot={{ r: 6 }}
-              connectNulls
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
+    <div className="space-y-4 md:space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">평균 거래가 추이</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={350}>
+            <AreaChart data={chartData}>
+              <defs>
+                <linearGradient id="avgPriceGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--color-up)" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="var(--color-up)" stopOpacity={0.05} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="month" fontSize={12} />
+              <YAxis tickFormatter={formatAmount} fontSize={12} domain={["auto", "auto"]} />
+              <Tooltip
+                formatter={(v) => [formatAmount(Number(v)), "평균 거래가"]}
+                {...chartTooltipStyle}
+              />
+              <Legend />
+              <Area
+                type="monotone"
+                dataKey="avgPrice"
+                name="평균 거래가(만원)"
+                stroke="var(--color-up)"
+                strokeWidth={2.5}
+                fill="url(#avgPriceGradient)"
+                dot={{ r: 4, fill: "var(--color-up)" }}
+                activeDot={{ r: 6 }}
+                connectNulls
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
 
-      <div className="bg-card rounded-lg border p-4">
-        <h3 className="text-sm font-medium mb-4">월별 거래량</h3>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis dataKey="month" fontSize={12} />
-            <YAxis fontSize={12} />
-            <Tooltip
-              formatter={(v) => [`${v}건`, "거래량"]}
-              {...chartTooltipStyle}
-            />
-            <Bar
-              dataKey="count"
-              name="거래 건수"
-              fill="hsl(var(--chart-2))"
-              radius={[4, 4, 0, 0]}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">월별 거래량</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="month" fontSize={12} />
+              <YAxis fontSize={12} />
+              <Tooltip
+                formatter={(v) => [`${v}건`, "거래량"]}
+                {...chartTooltipStyle}
+              />
+              <Bar
+                dataKey="count"
+                name="거래 건수"
+                fill="hsl(var(--chart-2))"
+                radius={[4, 4, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
     </div>
   );
 }
