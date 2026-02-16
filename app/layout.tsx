@@ -6,6 +6,8 @@ import { QueryProvider } from "@/components/query-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import SearchCommand from "@/components/search-command";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -50,7 +52,10 @@ export default function RootLayout({
                   <div className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <div className="flex h-14 items-center px-4 gap-4">
                       <SidebarTrigger />
-                      <div className="flex-1" />
+                      <div className="flex-1 max-w-md">
+                        <SearchCommand />
+                      </div>
+                      <ThemeToggle />
                     </div>
                   </div>
                   <div className="container mx-auto px-4 lg:px-6 py-6 max-w-7xl">

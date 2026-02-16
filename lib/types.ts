@@ -58,6 +58,7 @@ export interface StockQuote {
   changePercent: number;
   marketCap?: number;
   per?: number;
+  pbr?: number;
   high52w?: number;
   low52w?: number;
   dividendYield?: number;

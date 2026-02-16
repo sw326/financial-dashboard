@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
             changePercent: q.regularMarketChangePercent ?? 0,
             marketCap: q.marketCap,
             per: q.trailingPE,
+            pbr: q.priceToBook,
             high52w: q.fiftyTwoWeekHigh,
             low52w: q.fiftyTwoWeekLow,
             dividendYield: q.dividendYield,

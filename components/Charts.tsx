@@ -20,7 +20,6 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatAmount } from "@/lib/utils";
 import { AptTrade } from "@/lib/types";
-import { chartTooltipStyle } from "@/components/chart-tooltip";
 
 function aggregateByMonth(trades: AptTrade[]) {
   const map = new Map<string, { sum: number; count: number }>();

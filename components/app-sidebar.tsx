@@ -6,17 +6,13 @@ import Link from "next/link"
 import {
   LayoutDashboard,
   BarChart3,
-  LineChart,
-  TrendingUp,
-  ClipboardList,
-  Trophy,
+  Building2,
   Wallet,
 } from "lucide-react"
 
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -24,7 +20,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { ThemeToggle } from "@/components/theme-toggle"
 
 const navGroups = [
   {
@@ -41,14 +36,9 @@ const navGroups = [
     label: "증시",
     items: [
       {
-        title: "시장개요",
+        title: "증시",
         url: "/market",
         icon: BarChart3,
-      },
-      {
-        title: "종목차트",
-        url: "/stock",
-        icon: LineChart,
       },
     ],
   },
@@ -56,19 +46,9 @@ const navGroups = [
     label: "부동산",
     items: [
       {
-        title: "시세추이",
-        url: "/trend",
-        icon: TrendingUp,
-      },
-      {
-        title: "최근거래",
-        url: "/recent",
-        icon: ClipboardList,
-      },
-      {
-        title: "순위",
-        url: "/rank",
-        icon: Trophy,
+        title: "부동산",
+        url: "/real-estate",
+        icon: Building2,
       },
     ],
   },
@@ -117,13 +97,6 @@ export function AppSidebar() {
           </SidebarGroup>
         ))}
       </SidebarContent>
-      
-      <SidebarFooter>
-        <div className="flex items-center justify-between px-3 py-2">
-          <span className="text-xs text-muted-foreground">테마</span>
-          <ThemeToggle />
-        </div>
-      </SidebarFooter>
     </Sidebar>
   )
 }
