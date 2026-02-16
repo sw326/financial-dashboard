@@ -22,6 +22,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Financial Dashboard",
   description: "증시 & 부동산 실거래가 시각화 대시보드",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
   openGraph: {
     title: "Financial Dashboard",
     description: "증시 & 부동산 실거래가 시각화 대시보드",

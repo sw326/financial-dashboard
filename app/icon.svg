@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#16213e"/>
+    </linearGradient>
+    <linearGradient id="line" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#ef4444"/>
+      <stop offset="100%" style="stop-color:#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <!-- 배경 라운드 사각형 -->
+  <rect width="512" height="512" rx="108" fill="url(#bg)"/>
+  <!-- 캔들스틱 3개 -->
+  <!-- 캔들 1 (하락/파랑) -->
+  <line x1="140" y1="120" x2="140" y2="400" stroke="#3b82f6" stroke-width="12" stroke-linecap="round"/>
+  <rect x="110" y="180" width="60" height="140" rx="6" fill="#3b82f6"/>
+  <!-- 캔들 2 (상승/빨강, 큰) -->
+  <line x1="256" y1="80" x2="256" y2="380" stroke="#ef4444" stroke-width="12" stroke-linecap="round"/>
+  <rect x="226" y="140" width="60" height="160" rx="6" fill="#ef4444"/>
+  <!-- 캔들 3 (상승/빨강) -->
+  <line x1="372" y1="100" x2="372" y2="360" stroke="#ef4444" stroke-width="12" stroke-linecap="round"/>
+  <rect x="342" y="160" width="60" height="120" rx="6" fill="#ef4444"/>
+  <!-- 상승 트렌드 라인 -->
+  <polyline points="100,350 200,280 300,200 420,130" fill="none" stroke="url(#line)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>
+</svg>
