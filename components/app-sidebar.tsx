@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   TrendingUp,
   BarChart3,
-  Home,
   TrendingDown,
   Clock,
   Award,
