@@ -89,8 +89,8 @@ export default function Charts() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="month" fontSize={12} />
-              <YAxis tickFormatter={formatAmount} fontSize={12} domain={["auto", "auto"]} />
+              <XAxis dataKey="month" fontSize={12} stroke="hsl(var(--muted-foreground))" />
+              <YAxis tickFormatter={formatAmount} fontSize={12} domain={["auto", "auto"]} stroke="hsl(var(--muted-foreground))" />
               <Tooltip
                 formatter={(v) => [formatAmount(Number(v)), "평균 거래가"]}
                 {...chartTooltipStyle}
@@ -120,8 +120,8 @@ export default function Charts() {
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="month" fontSize={12} />
-              <YAxis fontSize={12} />
+              <XAxis dataKey="month" fontSize={12} stroke="hsl(var(--muted-foreground))" />
+              <YAxis fontSize={12} stroke="hsl(var(--muted-foreground))" />
               <Tooltip
                 formatter={(v) => [`${v}건`, "거래량"]}
                 {...chartTooltipStyle}

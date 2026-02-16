@@ -82,13 +82,14 @@ export default function RankChart() {
       <CardContent>
         <ResponsiveContainer width="100%" height={Math.max(400, rankData.length * 36)}>
           <BarChart data={rankData} layout="vertical" margin={{ left: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis type="number" tickFormatter={formatAmount} fontSize={12} />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis type="number" tickFormatter={formatAmount} fontSize={12} stroke="hsl(var(--muted-foreground))" />
             <YAxis
               type="category"
               dataKey="name"
               width={120}
               fontSize={11}
+              stroke="hsl(var(--muted-foreground))"
               tick={{ fill: "hsl(var(--foreground))" }}
             />
             <Tooltip
@@ -97,6 +98,13 @@ export default function RankChart() {
                 const item = rankData.find((d) => d.name === label);
                 return `${item?.fullName ?? label} (${item?.count ?? 0}건)`;
               }}
+              contentStyle={{
+                backgroundColor: "hsl(var(--card))",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: "8px",
+                color: "hsl(var(--card-foreground))",
+              }}
+              labelStyle={{ color: "hsl(var(--muted-foreground))" }}
             />
             <Bar dataKey="avgPrice" name="평균 거래가" radius={[0, 4, 4, 0]}>
               {rankData.map((_, i) => (
