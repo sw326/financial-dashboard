@@ -99,9 +99,10 @@ export async function GET(request: NextRequest) {
     cache.set(cacheKey, { data: allItems, ts: Date.now() });
     return NextResponse.json({ trades: allItems });
   } catch (error) {
-    console.error("실거래가 API 호출 실패:", error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error("실거래가 API 호출 실패:", errMsg);
     return NextResponse.json(
-      { error: "API 호출에 실패했습니다." },
+      { error: `API 호출 실패: ${errMsg}` },
       { status: 500 }
     );
   }
