@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTheme } from "next-themes";
 import { SEOUL_GU } from "@/lib/constants";
 
 export default function Map({ kakaoKey }: { kakaoKey: string }) {
+  const { resolvedTheme } = useTheme();
   const mapRef = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(() =>
     typeof window !== "undefined" && !!window.kakao?.maps
@@ -58,68 +60,51 @@ export default function Map({ kakaoKey }: { kakaoKey: string }) {
           font-family: 'Pretendard', -apple-system, sans-serif;
           font-size: 13px;
           line-height: 1.6;
-          background: hsl(var(--card));
-          color: hsl(var(--foreground));
-          border: 1px solid hsl(var(--border));
+          background: #ffffff;
+          color: #1a1a1a;
+          border: 1px solid #e5e5e5;
           border-radius: 10px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.25);
           position: relative;
         ">
           <button 
             onclick="window.__closeOverlay()"
             style="
               position: absolute;
-              top: 8px;
+              top: 6px;
               right: 8px;
               background: transparent;
               border: none;
               font-size: 18px;
               cursor: pointer;
-              color: hsl(var(--muted-foreground));
+              color: #888;
               line-height: 1;
-              padding: 0;
-              width: 20px;
-              height: 20px;
+              padding: 2px;
             "
           >×</button>
-          <strong style="font-size: 14px; display: block; margin-bottom: 10px; color: hsl(var(--foreground));">${gu.name}</strong>
+          <strong style="font-size: 14px; display: block; margin-bottom: 10px; color: #1a1a1a;">${gu.name}</strong>
           <div style="display: flex; flex-direction: column; gap: 6px;">
-            <a href="/trend?region=${gu.code}" style="
-              color: hsl(var(--primary));
-              text-decoration: none;
-              font-weight: 500;
-              display: flex;
-              align-items: center;
-              gap: 6px;
-              transition: opacity 0.2s;
-            " onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
+            <a href="/trend?region=${gu.code}" style="color:#2563eb;text-decoration:none;font-weight:500;display:flex;align-items:center;gap:6px;">
               <span>📈</span> 시세 추이
             </a>
-            <a href="/recent?region=${gu.code}" style="
-              color: hsl(var(--foreground));
-              text-decoration: none;
-              font-weight: 500;
-              display: flex;
-              align-items: center;
-              gap: 6px;
-              opacity: 0.8;
-              transition: opacity 0.2s;
-            " onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">
+            <a href="/recent?region=${gu.code}" style="color:#2563eb;text-decoration:none;font-weight:500;display:flex;align-items:center;gap:6px;">
               <span>📋</span> 최근 거래
             </a>
-            <a href="/rank?region=${gu.code}" style="
-              color: hsl(var(--foreground));
-              text-decoration: none;
-              font-weight: 500;
-              display: flex;
-              align-items: center;
-              gap: 6px;
-              opacity: 0.8;
-              transition: opacity 0.2s;
-            " onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">
+            <a href="/rank?region=${gu.code}" style="color:#2563eb;text-decoration:none;font-weight:500;display:flex;align-items:center;gap:6px;">
               <span>🏆</span> 순위
             </a>
           </div>
+          <div style="
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid #ffffff;
+          "></div>
         </div>
       `;
 
@@ -147,14 +132,20 @@ export default function Map({ kakaoKey }: { kakaoKey: string }) {
     );
   }
 
+  const isDark = resolvedTheme === "dark";
+
   return (
-    <div className="relative w-full h-full min-h-[400px]">
+    <div className="relative w-full h-full min-h-[400px] overflow-visible">
       {!loaded && (
         <div className="absolute inset-0 bg-muted rounded-lg flex items-center justify-center z-10">
           <p className="text-muted-foreground">🗺️ 지도 로딩 중...</p>
         </div>
       )}
-      <div ref={mapRef} className="w-full h-full rounded-lg" />
+      <div
+        ref={mapRef}
+        className="w-full h-full rounded-lg"
+        style={isDark ? { filter: "invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9)" } : undefined}
+      />
     </div>
   );
 }

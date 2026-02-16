@@ -3,8 +3,8 @@
 import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   BarChart,
   Bar,
   XAxis,
@@ -77,26 +77,33 @@ export default function Charts() {
       <div className="bg-card rounded-lg border p-4">
         <h3 className="text-sm font-medium mb-4">평균 거래가 추이</h3>
         <ResponsiveContainer width="100%" height={350}>
-          <LineChart data={chartData}>
+          <AreaChart data={chartData}>
+            <defs>
+              <linearGradient id="avgPriceGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="var(--color-up)" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="var(--color-up)" stopOpacity={0.05} />
+              </linearGradient>
+            </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis dataKey="month" fontSize={12} />
-            <YAxis tickFormatter={formatAmount} fontSize={12} />
+            <YAxis tickFormatter={formatAmount} fontSize={12} domain={["auto", "auto"]} />
             <Tooltip
               formatter={(v) => [formatAmount(Number(v)), "평균 거래가"]}
               {...chartTooltipStyle}
             />
             <Legend />
-            <Line
+            <Area
               type="monotone"
               dataKey="avgPrice"
               name="평균 거래가(만원)"
-              stroke="hsl(var(--chart-1))"
+              stroke="var(--color-up)"
               strokeWidth={2.5}
-              dot={{ r: 4 }}
+              fill="url(#avgPriceGradient)"
+              dot={{ r: 4, fill: "var(--color-up)" }}
               activeDot={{ r: 6 }}
               connectNulls
             />
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
       </div>
 
