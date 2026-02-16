@@ -120,6 +120,24 @@ export default function Map({ kakaoKey }: { kakaoKey: string }) {
         }
         overlay.setMap(map);
         openOverlay = overlay;
+
+        // 오버레이가 잘리지 않도록 마커 위치를 맵 중앙보다 아래로 패닝
+        const proj = map.getProjection();
+        const markerPoint = proj.containerPointFromCoords(
+          new window.kakao.maps.LatLng(gu.lat, gu.lng)
+        );
+        const mapHeight = mapRef.current?.clientHeight || 400;
+        // 마커가 상단 40% 안에 있으면 맵을 위로 올려서 오버레이 공간 확보
+        if (markerPoint.y < mapHeight * 0.4) {
+          const center = map.getCenter();
+          const centerPoint = proj.containerPointFromCoords(center);
+          const newCenterPoint = new window.kakao.maps.Point(
+            centerPoint.x,
+            centerPoint.y - (mapHeight * 0.25 - markerPoint.y * 0.3)
+          );
+          const newCenter = proj.coordsFromContainerPoint(newCenterPoint);
+          map.panTo(newCenter);
+        }
       });
     });
   }, [loaded]);

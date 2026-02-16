@@ -5,11 +5,25 @@ declare namespace kakao.maps {
     getLng(): number;
   }
 
+  class Point {
+    constructor(x: number, y: number);
+    x: number;
+    y: number;
+  }
+
   class Map {
     constructor(container: HTMLElement, options: MapOptions);
     setCenter(latlng: LatLng): void;
     setLevel(level: number): void;
     getLevel(): number;
+    getCenter(): LatLng;
+    panTo(latlng: LatLng): void;
+    getProjection(): MapProjection;
+  }
+
+  interface MapProjection {
+    containerPointFromCoords(latlng: LatLng): Point;
+    coordsFromContainerPoint(point: Point): LatLng;
   }
 
   interface MapOptions {
