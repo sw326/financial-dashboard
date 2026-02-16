@@ -1,47 +1,36 @@
 "use client";
 
-import { use, useState } from "react";
+import { use } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-} from "recharts";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import type { StockQuote } from "@/lib/types";
 import { useQuotes } from "@/hooks/use-quotes";
-import { useChart } from "@/hooks/use-chart";
-import { chartTooltipStyle } from "@/components/chart-tooltip";
-
-const PERIODS = ["1mo", "3mo", "6mo", "1y", "5y"] as const;
+import { TradingViewChart } from "@/components/tradingview-chart";
 
 interface Props {
   params: Promise<{ symbol: string }>;
 }
 
 export default function StockDetailPage({ params }: Props) {
-  const [period, setPeriod] = useState<string>("6mo");
-  
   // Next.js 16 - params는 Promise, use() hook으로 unwrap
   const resolvedParams = use(params);
   const symbol = decodeURIComponent(resolvedParams.symbol);
 
-  return <StockDetailContent symbol={symbol} period={period} setPeriod={setPeriod} />;
+  return <StockDetailContent symbol={symbol} />;
 }
 
-function StockDetailContent({ symbol, period, setPeriod }: { symbol: string; period: string; setPeriod: (v: string) => void }) {
+function StockDetailContent({ symbol }: { symbol: string }) {
   // React Query hooks
   const { data: quoteData = [], isLoading: quoteLoading, error: quoteError } = useQuotes([symbol]);
-  const { data: chart = [], isLoading: chartLoading } = useChart(symbol, period);
 
   const quote = quoteData.length > 0 ? (quoteData[0] as unknown as StockQuote) : null;
-  const loading = quoteLoading || chartLoading;
+  const loading = quoteLoading;
   const error = quoteError ? "데이터 로딩 실패" : (!quote && !quoteLoading ? "종목을 찾을 수 없습니다" : "");
 
   const color = (v: number) => (v >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]");
-  const colorValue = (v: number) => (v >= 0 ? "#ef4444" : "#3b82f6");
   const sign = (v: number) => (v >= 0 ? "+" : "");
   const fmt = (v?: number) => v != null ? v.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "-";
 
@@ -94,66 +83,12 @@ function StockDetailContent({ symbol, period, setPeriod }: { symbol: string; per
         </TabsList>
 
         {/* 차트 탭 */}
-        <TabsContent value="chart" className="space-y-4">
-          {/* 기간 선택 */}
-          <ToggleGroup type="single" value={period} onValueChange={(v) => v && setPeriod(v)}>
-            {PERIODS.map((p) => (
-              <ToggleGroupItem key={p} value={p} className="px-4">
-                {p}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-
-          {/* 가격 차트 */}
-          {chart.length > 0 && (
-            <Card>
-              <CardContent className="pt-4">
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={chart}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={(v) => v.slice(5)} />
-                    <YAxis domain={["auto", "auto"]} tick={{ fontSize: 11 }} tickFormatter={(v) => v.toLocaleString()} />
-                    <Tooltip
-                      formatter={(v) => [(v as number).toLocaleString(), "종가"]}
-                      labelFormatter={(l) => l}
-                      {...chartTooltipStyle}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="close"
-                      stroke={colorValue(quote.change)}
-                      dot={false}
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* 거래량 차트 */}
-          {chart.length > 0 && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">거래량</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={120}>
-                  <BarChart data={chart}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(v) => v.slice(5)} />
-                    <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => (v / 1e6).toFixed(0) + "M"} />
-                    <Tooltip
-                      formatter={(v) => [(v as number).toLocaleString(), "거래량"]}
-                      labelFormatter={(l) => l}
-                      {...chartTooltipStyle}
-                    />
-                    <Bar dataKey="volume" fill="#94a3b8" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          )}
+        <TabsContent value="chart">
+          <Card>
+            <CardContent className="p-0 overflow-hidden rounded-b-lg">
+              <TradingViewChart symbol={symbol} height={500} />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* 종목정보 탭 */}
