@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import yahooFinance from "yahoo-finance2";
+import YahooFinance from "yahoo-finance2";
 
+const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 const cache = new Map<string, { data: unknown; ts: number }>();
 const TTL = 5 * 60 * 1000; // 5 min
 
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest) {
       symbols.map(async (s) => {
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const q: any = await yahooFinance.quote(s);
+          const q: any = await yf.quote(s);
           return {
             symbol: q.symbol,
             name: q.shortName ?? q.longName ?? q.symbol,

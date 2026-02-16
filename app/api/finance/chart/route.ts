@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import yahooFinance from "yahoo-finance2";
+import YahooFinance from "yahoo-finance2";
 
+const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 const cache = new Map<string, { data: unknown; ts: number }>();
 const TTL = 5 * 60 * 1000;
 
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
     const p1 = PERIOD_MAP[period] ?? "6mo";
     const interval = ["5y"].includes(p1) ? "1wk" : "1d";
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result: any = await yahooFinance.chart(symbol, {
+    const result: any = await yf.chart(symbol, {
       period1: getStartDate(p1),
       interval: interval as "1d" | "1wk",
     });
