@@ -6,8 +6,11 @@ import {
   createChart,
   IChartApi,
   CandlestickSeries,
+  LineSeries,
+  AreaSeries,
   HistogramSeries,
   ColorType,
+  UTCTimestamp,
 } from "lightweight-charts";
 
 interface ChartData {
@@ -22,9 +25,29 @@ interface ChartData {
 interface LightweightChartProps {
   data: ChartData[];
   loading?: boolean;
+  chartType?: "candle" | "line" | "area";
+  maLines?: number[];
 }
 
-function LightweightChartInner({ data, loading }: LightweightChartProps) {
+export const MA_COLORS: Record<number, string> = {
+  5: "#f59e0b",
+  20: "#ef4444",
+  60: "#3b82f6",
+};
+
+function calculateMA(data: ChartData[], period: number) {
+  return data
+    .map((d, i) => {
+      if (i < period - 1) return null;
+      const sum = data
+        .slice(i - period + 1, i + 1)
+        .reduce((acc, v) => acc + v.close, 0);
+      return { time: d.time as UTCTimestamp, value: sum / period };
+    })
+    .filter((item): item is { time: UTCTimestamp; value: number } => item !== null);
+}
+
+function LightweightChartInner({ data, loading, chartType = "candle", maLines }: LightweightChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const { resolvedTheme } = useTheme();
@@ -62,25 +85,67 @@ function LightweightChartInner({ data, loading }: LightweightChartProps) {
       },
     });
 
-    // 캔들스틱
-    const candleSeries = chart.addSeries(CandlestickSeries, {
-      upColor: "#ef4444", // 상승 = 빨강 (한국)
-      downColor: "#3b82f6", // 하락 = 파랑
-      borderUpColor: "#ef4444",
-      borderDownColor: "#3b82f6",
-      wickUpColor: "#ef4444",
-      wickDownColor: "#3b82f6",
-    });
+    // 차트 타입에 따라 시리즈 추가
+    if (chartType === "candle") {
+      const candleSeries = chart.addSeries(CandlestickSeries, {
+        upColor: "#ef4444", // 상승 = 빨강 (한국)
+        downColor: "#3b82f6", // 하락 = 파랑
+        borderUpColor: "#ef4444",
+        borderDownColor: "#3b82f6",
+        wickUpColor: "#ef4444",
+        wickDownColor: "#3b82f6",
+      });
 
-    candleSeries.setData(
-      data.map((d) => ({
-        time: d.time as unknown as import("lightweight-charts").UTCTimestamp,
-        open: d.open,
-        high: d.high,
-        low: d.low,
-        close: d.close,
-      }))
-    );
+      candleSeries.setData(
+        data.map((d) => ({
+          time: d.time as UTCTimestamp,
+          open: d.open,
+          high: d.high,
+          low: d.low,
+          close: d.close,
+        }))
+      );
+    } else if (chartType === "line") {
+      const lineSeries = chart.addSeries(LineSeries, {
+        color: isDark ? "#e5e5e5" : "#1a1a1a",
+        lineWidth: 2,
+      });
+
+      lineSeries.setData(
+        data.map((d) => ({
+          time: d.time as UTCTimestamp,
+          value: d.close,
+        }))
+      );
+    } else if (chartType === "area") {
+      const areaSeries = chart.addSeries(AreaSeries, {
+        lineColor: isDark ? "#e5e5e5" : "#1a1a1a",
+        topColor: isDark ? "rgba(229,229,229,0.3)" : "rgba(26,26,26,0.3)",
+        bottomColor: isDark ? "rgba(229,229,229,0.02)" : "rgba(26,26,26,0.02)",
+        lineWidth: 2,
+      });
+
+      areaSeries.setData(
+        data.map((d) => ({
+          time: d.time as UTCTimestamp,
+          value: d.close,
+        }))
+      );
+    }
+
+    // 이동평균선 추가
+    if (maLines && maLines.length > 0) {
+      maLines.forEach((period) => {
+        const maData = calculateMA(data, period);
+        const maSeries = chart.addSeries(LineSeries, {
+          color: MA_COLORS[period] || "#94a3b8",
+          lineWidth: 1,
+          priceLineVisible: false,
+          lastValueVisible: false,
+        });
+        maSeries.setData(maData);
+      });
+    }
 
     // 거래량 (하단)
     const volumeSeries = chart.addSeries(HistogramSeries, {
@@ -129,7 +194,7 @@ function LightweightChartInner({ data, loading }: LightweightChartProps) {
         chartRef.current = null;
       }
     };
-  }, [data, isDark]);
+  }, [data, isDark, chartType, maLines]);
 
   if (loading) {
     return (
