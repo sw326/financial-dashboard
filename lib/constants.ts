@@ -31,4 +31,4 @@ export const SEOUL_GU: Region[] = [
 
 /** 국토부 실거래가 API 기본 URL */
 export const TRADE_API_BASE_URL =
-  "http://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade";
+  "https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade";

@@ -6,21 +6,25 @@ import { AptTrade } from "@/lib/types";
 const cache = new Map<string, { data: AptTrade[]; ts: number }>();
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour
 
-function parseTradeItem(item: Record<string, unknown>): AptTrade {
-  const amount = String(item["거래금액"] ?? item.dealAmount ?? "0")
-    .replace(/,/g, "")
-    .trim();
+function parseXmlValue(xml: string, tag: string): string {
+  const regex = new RegExp(`<${tag}>([^<]*)</${tag}>`);
+  const match = xml.match(regex);
+  return match ? match[1].trim() : "";
+}
+
+function parseTradeItemFromXml(itemXml: string): AptTrade {
+  const amount = parseXmlValue(itemXml, "dealAmount").replace(/,/g, "").trim();
   return {
     dealAmount: parseInt(amount, 10) || 0,
-    buildYear: Number(item["건축년도"] ?? item.buildYear ?? 0),
-    dealYear: Number(item["년"] ?? item.dealYear ?? 0),
-    dealMonth: Number(item["월"] ?? item.dealMonth ?? 0),
-    dealDay: Number(item["일"] ?? item.dealDay ?? 0),
-    aptName: String(item["아파트"] ?? item.aptNm ?? item.aptName ?? ""),
-    area: parseFloat(String(item["전용면적"] ?? item.excluUseAr ?? item.area ?? 0)),
-    floor: Number(item["층"] ?? item.floor ?? 0),
-    dong: String(item["법정동"] ?? item.umdNm ?? item.dong ?? ""),
-    regionCode: String(item["지역코드"] ?? item.sggCd ?? item.regionCode ?? ""),
+    buildYear: Number(parseXmlValue(itemXml, "buildYear")) || 0,
+    dealYear: Number(parseXmlValue(itemXml, "dealYear")) || 0,
+    dealMonth: Number(parseXmlValue(itemXml, "dealMonth")) || 0,
+    dealDay: Number(parseXmlValue(itemXml, "dealDay")) || 0,
+    aptName: parseXmlValue(itemXml, "aptNm") || parseXmlValue(itemXml, "아파트") || "",
+    area: parseFloat(parseXmlValue(itemXml, "excluUseAr") || parseXmlValue(itemXml, "전용면적") || "0"),
+    floor: Number(parseXmlValue(itemXml, "floor") || parseXmlValue(itemXml, "층")) || 0,
+    dong: parseXmlValue(itemXml, "umdNm") || parseXmlValue(itemXml, "법정동") || "",
+    regionCode: parseXmlValue(itemXml, "sggCd") || parseXmlValue(itemXml, "지역코드") || "",
   };
 }
 
@@ -51,41 +55,48 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Fetch all pages
     let allItems: AptTrade[] = [];
     let pageNo = 1;
     const numOfRows = 1000;
 
     while (true) {
-      const url = `${TRADE_API_BASE_URL}?serviceKey=${apiKey}&LAWD_CD=${lawdCd}&DEAL_YMD=${dealYmd}&pageNo=${pageNo}&numOfRows=${numOfRows}&type=json`;
+      const params = new URLSearchParams({
+        serviceKey: apiKey,
+        LAWD_CD: lawdCd,
+        DEAL_YMD: dealYmd,
+        pageNo: String(pageNo),
+        numOfRows: String(numOfRows),
+      });
+      const url = `${TRADE_API_BASE_URL}?${params.toString()}`;
       const res = await fetch(url);
-      
+
       if (!res.ok) {
         throw new Error(`API returned ${res.status}`);
       }
 
-      const data = await res.json();
-      const body = data?.response?.body;
-      
-      if (!body) {
-        // Might be XML error response
-        break;
+      const xml = await res.text();
+
+      // Check for error
+      const resultCode = parseXmlValue(xml, "resultCode");
+      if (resultCode && resultCode !== "000" && resultCode !== "00") {
+        const resultMsg = parseXmlValue(xml, "resultMsg");
+        throw new Error(`API error: ${resultCode} ${resultMsg}`);
       }
 
-      const items = body.items?.item;
-      if (!items) break;
+      // Parse items
+      const itemMatches = xml.match(/<item>([\s\S]*?)<\/item>/g);
+      if (!itemMatches || itemMatches.length === 0) break;
 
-      const itemArray = Array.isArray(items) ? items : [items];
-      const parsed = itemArray.map(parseTradeItem);
+      const parsed = itemMatches.map(parseTradeItemFromXml);
       allItems = allItems.concat(parsed);
 
-      const totalCount = body.totalCount ?? 0;
+      // Check total count for pagination
+      const totalCount = Number(parseXmlValue(xml, "totalCount")) || 0;
       if (pageNo * numOfRows >= totalCount) break;
       pageNo++;
     }
 
     cache.set(cacheKey, { data: allItems, ts: Date.now() });
-
     return NextResponse.json({ trades: allItems });
   } catch (error) {
     console.error("실거래가 API 호출 실패:", error);
