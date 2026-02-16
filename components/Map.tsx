@@ -5,20 +5,16 @@ import { SEOUL_GU } from "@/lib/constants";
 
 export default function Map({ kakaoKey }: { kakaoKey: string }) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(() =>
+    typeof window !== "undefined" && !!window.kakao?.maps
+  );
+  const [error, setError] = useState<string | null>(
+    !kakaoKey ? "카카오맵 API 키가 설정되지 않았습니다" : null
+  );
 
   // Load SDK
   useEffect(() => {
-    if (window.kakao?.maps) {
-      setLoaded(true);
-      return;
-    }
-
-    if (!kakaoKey) {
-      setError("카카오맵 API 키가 설정되지 않았습니다");
-      return;
-    }
+    if (loaded || !kakaoKey) return;
 
     const script = document.createElement("script");
     script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${kakaoKey}&autoload=false`;
@@ -28,7 +24,7 @@ export default function Map({ kakaoKey }: { kakaoKey: string }) {
     };
     script.onerror = () => setError("카카오맵 로드 실패");
     document.head.appendChild(script);
-  }, []);
+  }, [kakaoKey, loaded]);
 
   // Init map
   useEffect(() => {
