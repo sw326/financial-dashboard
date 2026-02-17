@@ -1,29 +1,81 @@
 import { NextRequest, NextResponse } from "next/server";
 import YahooFinance from "yahoo-finance2";
-import { KR_STOCK_NAMES, getKrStockName } from "@/lib/kr-stock-names";
+import { getKrStockName } from "@/lib/kr-stock-names";
 
 const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
 const ALLOWED_TYPES = new Set(["EQUITY", "INDEX", "ETF"]);
+
+interface SearchResult {
+  symbol: string;
+  name: string;
+  type: string;
+  exchange: string;
+}
 
 // 한글 포함 여부 체크
 function hasKorean(s: string): boolean {
   return /[가-힣]/.test(s);
 }
 
-// 로컬 KR 매핑에서 한글 이름 검색
-function searchLocalKr(q: string): { symbol: string; name: string; type: string; exchange: string }[] {
-  const lower = q.toLowerCase();
-  return Object.entries(KR_STOCK_NAMES)
-    .filter(([symbol, name]) =>
-      name.toLowerCase().includes(lower) || symbol.toLowerCase().includes(lower)
-    )
-    .map(([symbol, name]) => ({
-      symbol,
-      name,
-      type: "EQUITY",
-      exchange: symbol.endsWith(".KQ") ? "KOSDAQ" : "KOSPI",
-    }));
+// 네이버 자동완성 API로 국장 종목 검색 (한글/종목코드 모두 지원)
+async function searchNaver(q: string): Promise<SearchResult[]> {
+  try {
+    const url = `https://ac.stock.naver.com/ac?q=${encodeURIComponent(q)}&target=stock`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const items = (data.items || []) as {
+      code: string;
+      name: string;
+      typeCode: string;
+      nationCode: string;
+    }[];
+    return items
+      .filter((item) => item.nationCode === "KOR") // 국내 종목만
+      .slice(0, 10)
+      .map((item) => ({
+        symbol: `${item.code}.${item.typeCode === "KOSDAQ" ? "KQ" : "KS"}`,
+        name: item.name,
+        type: "EQUITY",
+        exchange: item.typeCode || "KOSPI",
+      }));
+  } catch {
+    return [];
+  }
+}
+
+// Yahoo Finance API로 해외 종목 검색 (영문만)
+async function searchYahoo(q: string): Promise<SearchResult[]> {
+  try {
+    const data = await yf.search(q);
+    return (data.quotes || [])
+      .filter(
+        (quote): quote is Extract<typeof quote, { isYahooFinance: true }> =>
+          "quoteType" in quote && ALLOWED_TYPES.has(String(quote.quoteType))
+      )
+      .filter((quote) => {
+        // KR 종목은 네이버에서 가져오므로 제외
+        const sym = String(quote.symbol);
+        return !sym.endsWith(".KS") && !sym.endsWith(".KQ");
+      })
+      .slice(0, 10)
+      .map((quote) => {
+        const symbol = String(quote.symbol);
+        const shortname = quote.shortname ? String(quote.shortname) : undefined;
+        const longname = quote.longname ? String(quote.longname) : undefined;
+        return {
+          symbol,
+          name: getKrStockName(symbol, shortname || longname || symbol),
+          type: String(quote.quoteType),
+          exchange: String(quote.exchange),
+        };
+      });
+  } catch {
+    return [];
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -33,39 +85,17 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // 1. 항상 로컬 KR 매핑에서 검색
-    const localResults = searchLocalKr(q);
+    // 한글 → 네이버만, 영문 → 네이버 + Yahoo 병렬
+    const isKorean = hasKorean(q);
+    const [naverResults, yahooResults] = await Promise.all([
+      searchNaver(q),
+      isKorean ? Promise.resolve([]) : searchYahoo(q),
+    ]);
 
-    // 2. Yahoo API는 한글이 아닐 때만 (한글 검색 미지원)
-    let yahooResults: typeof localResults = [];
-    if (!hasKorean(q)) {
-      try {
-        const data = await yf.search(q);
-        yahooResults = (data.quotes || [])
-          .filter((quote): quote is Extract<typeof quote, { isYahooFinance: true }> =>
-            "quoteType" in quote && ALLOWED_TYPES.has(String(quote.quoteType))
-          )
-          .slice(0, 10)
-          .map((quote) => {
-            const symbol = String(quote.symbol);
-            const shortname = quote.shortname ? String(quote.shortname) : undefined;
-            const longname = quote.longname ? String(quote.longname) : undefined;
-            return {
-              symbol,
-              name: getKrStockName(symbol, shortname || longname || symbol),
-              type: String(quote.quoteType),
-              exchange: String(quote.exchange),
-            };
-          });
-      } catch {
-        // Yahoo API 실패 시 로컬 결과만 사용
-      }
-    }
-
-    // 3. 병합 (로컬 우선, 중복 제거)
+    // 병합 (네이버 국장 우선, 그 뒤 해외)
     const seen = new Set<string>();
-    const merged = [];
-    for (const r of [...localResults, ...yahooResults]) {
+    const merged: SearchResult[] = [];
+    for (const r of [...naverResults, ...yahooResults]) {
       if (!seen.has(r.symbol)) {
         seen.add(r.symbol);
         merged.push(r);
