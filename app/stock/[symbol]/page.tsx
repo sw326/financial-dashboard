@@ -160,7 +160,7 @@ function StockDetailContent({ symbol }: { symbol: string }) {
         <TabsContent value="chart" className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
-              <Select value={minuteValue} onValueChange={(v) => setPeriod(v)}>
+              <Select value={minuteValue} onValueChange={(v) => setPeriod(v)} onOpenChange={(open) => { if (open && !isMinute) setPeriod("1m"); }}>
                 <SelectTrigger className="w-[80px] h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>

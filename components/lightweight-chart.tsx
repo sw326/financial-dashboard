@@ -207,23 +207,28 @@ function LightweightChartInner({ data, loading, chartType = "candle", maLines, r
 
   // 실시간 가격 업데이트
   useEffect(() => {
-    if (!realtimePrice || !mainSeriesRef.current) return;
-    const { price, time } = realtimePrice;
-    const t = time as UTCTimestamp;
+    if (!realtimePrice || !mainSeriesRef.current || data.length === 0) return;
+    const { price } = realtimePrice;
+    const last = data[data.length - 1];
+    if (!last) return;
 
-    if (chartType === "candle") {
-      const last = data[data.length - 1];
-      if (last) {
+    // 항상 마지막 데이터 포인트의 time 사용 (time 불일치 방지)
+    const lastTime = last.time as UTCTimestamp;
+
+    try {
+      if (chartType === "candle") {
         mainSeriesRef.current.update({
-          time: t,
+          time: lastTime,
           open: last.open,
           high: Math.max(last.high, price),
           low: Math.min(last.low, price),
           close: price,
         });
+      } else {
+        mainSeriesRef.current.update({ time: lastTime, value: price });
       }
-    } else {
-      mainSeriesRef.current.update({ time: t, value: price });
+    } catch {
+      // lightweight-charts time ordering error — safe to ignore
     }
   }, [realtimePrice, chartType, data]);
 
