@@ -66,6 +66,7 @@ function IndexTicker({ indices }: { indices: MarketIndex[] }) {
 export default function MarketPage() {
   const [tab, setTab] = useState("hot");
   const [market, setMarket] = useState("all");
+  const [krMarket, setKrMarket] = useState("all");
   const [page, setPage] = useState(1);
 
   // 주요 지수 조회
@@ -80,8 +81,9 @@ export default function MarketPage() {
     });
   }, [indicesData]);
 
-  // 종목 리스트 조회
-  const { data: response, isLoading: stocksLoading } = useTrending(tab, market, page, 20);
+  // 종목 리스트 조회 (국장은 krMarket 서브필터 전달)
+  const effectiveMarket = market === "kr" ? `kr:${krMarket}` : market;
+  const { data: response, isLoading: stocksLoading } = useTrending(tab, effectiveMarket, page, 20);
   const stocks = response?.stocks || [];
   const total = response?.total || 0;
   const totalPages = Math.ceil(total / 20);
@@ -95,6 +97,14 @@ export default function MarketPage() {
   const handleMarketChange = (value: string) => {
     if (value) {
       setMarket(value);
+      setKrMarket("all");
+      setPage(1);
+    }
+  };
+
+  const handleKrMarketChange = (value: string) => {
+    if (value) {
+      setKrMarket(value);
       setPage(1);
     }
   };
@@ -135,6 +145,15 @@ export default function MarketPage() {
           <ToggleGroupItem value="kr">국장</ToggleGroupItem>
           <ToggleGroupItem value="us">미장</ToggleGroupItem>
         </ToggleGroup>
+
+        {/* 국장 서브필터: 코스피/코스닥 */}
+        {market === "kr" && (
+          <ToggleGroup type="single" value={krMarket} onValueChange={handleKrMarketChange}>
+            <ToggleGroupItem value="all">전체</ToggleGroupItem>
+            <ToggleGroupItem value="kospi">코스피</ToggleGroupItem>
+            <ToggleGroupItem value="kosdaq">코스닥</ToggleGroupItem>
+          </ToggleGroup>
+        )}
       </div>
 
       {/* 종목 리스트 */}
