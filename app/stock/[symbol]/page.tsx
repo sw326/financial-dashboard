@@ -122,8 +122,10 @@ function StockDetailContent({ symbol }: { symbol: string }) {
   }
 
   const isKRW = summary?.currency === "KRW";
-  const fmtPrice = (v?: number) => isKRW ? fmtKrw(v) : fmt(v);
-  const fmtBigNum = (v?: number) => isKRW ? fmtKrw(v) : fmtKrw(v); // 큰 숫자는 동일 포맷
+  const unit = isKRW ? "원" : "$";
+  const fmtPrice = (v?: number) => v != null ? (isKRW ? fmtKrw(v) + "원" : "$" + fmt(v)) : "-";
+  const fmtBigNum = (v?: number) => v != null ? (fmtKrw(v) + (isKRW ? "원" : "$")) : "-";
+  const fmtX = (v?: number) => v != null ? fmt(v) + "배" : "-"; // PER, PBR 등 배수
 
   return (
     <div className="space-y-6">
@@ -241,16 +243,16 @@ function StockDetailContent({ symbol }: { symbol: string }) {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <InfoRow label="시가" value={fmt(summary.open)} />
-                  <InfoRow label="고가" value={fmt(summary.dayHigh)} />
-                  <InfoRow label="저가" value={fmt(summary.dayLow)} />
-                  <InfoRow label="전일종가" value={fmt(summary.prevClose)} />
-                  <InfoRow label="거래량" value={fmt(summary.volume, 0)} />
-                  <InfoRow label="평균 거래량" value={fmt(summary.avgVolume, 0)} />
-                  <InfoRow label="52주 고가" value={fmt(summary.fiftyTwoWeekHigh)} />
-                  <InfoRow label="52주 저가" value={fmt(summary.fiftyTwoWeekLow)} />
-                  <InfoRow label="50일 평균" value={fmt(summary.fiftyDayAverage)} />
-                  <InfoRow label="200일 평균" value={fmt(summary.twoHundredDayAverage)} />
+                  <InfoRow label="시가" value={fmtPrice(summary.open)} />
+                  <InfoRow label="고가" value={fmtPrice(summary.dayHigh)} />
+                  <InfoRow label="저가" value={fmtPrice(summary.dayLow)} />
+                  <InfoRow label="전일종가" value={fmtPrice(summary.prevClose)} />
+                  <InfoRow label="거래량" value={fmt(summary.volume, 0) + "주"} />
+                  <InfoRow label="평균 거래량" value={fmt(summary.avgVolume, 0) + "주"} />
+                  <InfoRow label="52주 고가" value={fmtPrice(summary.fiftyTwoWeekHigh)} />
+                  <InfoRow label="52주 저가" value={fmtPrice(summary.fiftyTwoWeekLow)} />
+                  <InfoRow label="50일 평균" value={fmtPrice(summary.fiftyDayAverage)} />
+                  <InfoRow label="200일 평균" value={fmtPrice(summary.twoHundredDayAverage)} />
                 </CardContent>
               </Card>
 
@@ -263,13 +265,13 @@ function StockDetailContent({ symbol }: { symbol: string }) {
                 </CardHeader>
                 <CardContent>
                   <InfoRow label="시가총액" value={fmtBigNum(summary.marketCap)} />
-                  <InfoRow label="PER (trailing)" value={fmt(summary.trailingPE)} />
-                  <InfoRow label="PER (forward)" value={fmt(summary.forwardPE)} />
-                  <InfoRow label="PBR" value={fmt(summary.priceToBook)} />
-                  <InfoRow label="PSR" value={fmt(summary.priceToSales)} />
+                  <InfoRow label="PER (trailing)" value={fmtX(summary.trailingPE)} />
+                  <InfoRow label="PER (forward)" value={fmtX(summary.forwardPE)} />
+                  <InfoRow label="PBR" value={fmtX(summary.priceToBook)} />
+                  <InfoRow label="PSR" value={fmtX(summary.priceToSales)} />
                   <InfoRow label="EV" value={fmtBigNum(summary.enterpriseValue)} />
-                  <InfoRow label="EV/Revenue" value={fmt(summary.enterpriseToRevenue)} />
-                  <InfoRow label="EV/EBITDA" value={fmt(summary.enterpriseToEbitda)} />
+                  <InfoRow label="EV/Revenue" value={fmtX(summary.enterpriseToRevenue)} />
+                  <InfoRow label="EV/EBITDA" value={fmtX(summary.enterpriseToEbitda)} />
                   <InfoRow label="Beta" value={fmt(summary.beta)} />
                 </CardContent>
               </Card>
@@ -286,19 +288,19 @@ function StockDetailContent({ symbol }: { symbol: string }) {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div className="text-center p-3 bg-muted/50 rounded-lg">
                         <div className="text-xs text-muted-foreground mb-1">목표가 (평균)</div>
-                        <div className="text-lg font-semibold tabular-nums">{fmt(summary.targetMeanPrice)}</div>
+                        <div className="text-lg font-semibold tabular-nums">{fmtPrice(summary.targetMeanPrice)}</div>
                       </div>
                       <div className="text-center p-3 bg-muted/50 rounded-lg">
                         <div className="text-xs text-muted-foreground mb-1">목표가 (중간)</div>
-                        <div className="text-lg font-semibold tabular-nums">{fmt(summary.targetMedianPrice)}</div>
+                        <div className="text-lg font-semibold tabular-nums">{fmtPrice(summary.targetMedianPrice)}</div>
                       </div>
                       <div className="text-center p-3 bg-muted/50 rounded-lg">
                         <div className="text-xs text-muted-foreground mb-1">최고 목표가</div>
-                        <div className="text-lg font-semibold tabular-nums text-[var(--color-up)]">{fmt(summary.targetHighPrice)}</div>
+                        <div className="text-lg font-semibold tabular-nums text-[var(--color-up)]">{fmtPrice(summary.targetHighPrice)}</div>
                       </div>
                       <div className="text-center p-3 bg-muted/50 rounded-lg">
                         <div className="text-xs text-muted-foreground mb-1">최저 목표가</div>
-                        <div className="text-lg font-semibold tabular-nums text-[var(--color-down)]">{fmt(summary.targetLowPrice)}</div>
+                        <div className="text-lg font-semibold tabular-nums text-[var(--color-down)]">{fmtPrice(summary.targetLowPrice)}</div>
                       </div>
                     </div>
                     {summary.recommendationKey && summary.recommendationKey !== "none" && (
@@ -321,8 +323,8 @@ function StockDetailContent({ symbol }: { symbol: string }) {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <InfoRow label="발행주식수" value={fmtBigNum(summary.sharesOutstanding)} />
-                    <InfoRow label="유통주식수" value={fmtBigNum(summary.floatShares)} />
+                    <InfoRow label="발행주식수" value={fmtKrw(summary.sharesOutstanding) + "주"} />
+                    <InfoRow label="유통주식수" value={fmtKrw(summary.floatShares) + "주"} />
                     <InfoRow label="내부자 보유" value={pct(summary.heldPercentInsiders)} />
                     <InfoRow label="기관 보유" value={pct(summary.heldPercentInstitutions)} />
                   </div>
@@ -369,7 +371,7 @@ function StockDetailContent({ symbol }: { symbol: string }) {
                 </CardHeader>
                 <CardContent>
                   <InfoRow label="보유현금" value={fmtBigNum(summary.totalCash)} />
-                  <InfoRow label="주당 현금" value={fmt(summary.totalCashPerShare)} />
+                  <InfoRow label="주당 현금" value={fmtPrice(summary.totalCashPerShare)} />
                   <InfoRow label="총 부채" value={fmtBigNum(summary.totalDebt)} />
                   <InfoRow label="부채비율 (D/E)" value={fmt(summary.debtToEquity)} />
                   <InfoRow label="유동비율" value={fmt(summary.currentRatio)} />
@@ -400,7 +402,7 @@ function StockDetailContent({ symbol }: { symbol: string }) {
               <CardContent>
                 {summary.dividendRate != null ? (
                   <div className="space-y-0">
-                    <InfoRow label="연간 배당금" value={fmt(summary.dividendRate)} />
+                    <InfoRow label="연간 배당금" value={fmtPrice(summary.dividendRate)} />
                     <InfoRow label="배당수익률" value={pct(summary.dividendYield)} />
                     <InfoRow label="배당성향" value={pct(summary.payoutRatio)} />
                     <InfoRow label="5년 평균 배당률" value={summary.fiveYearAvgDividendYield != null ? summary.fiveYearAvgDividendYield.toFixed(2) + "%" : "-"} />
