@@ -132,6 +132,7 @@ function SectorHoverCard({
   onNavigate,
   onMouseEnter,
   onMouseLeave,
+  cardRef,
 }: {
   sectorName: string;
   stocks: HeatmapStock[];
@@ -139,6 +140,7 @@ function SectorHoverCard({
   onNavigate: (symbol: string) => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
+  cardRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const sorted = [...stocks].sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
   const display = sorted.slice(0, 15);
@@ -146,8 +148,9 @@ function SectorHoverCard({
 
   return (
     <div
-      className="fixed z-50 pointer-events-auto bg-popover border border-border rounded-lg shadow-xl p-3 min-w-[260px] max-w-[340px]"
-      style={{ left: position.x, top: position.y }}
+      ref={cardRef}
+      className="absolute z-50 pointer-events-auto bg-popover border border-border rounded-lg shadow-xl p-3 min-w-[260px] max-w-[300px]"
+      style={{ left: `${position.x}%`, top: `${position.y}%` }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
@@ -218,36 +221,26 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
     leaveTimerRef.current = setTimeout(() => setHoveredSector(null), 350);
   }, []);
 
-  // 섹터 rect의 화면 좌표에서 카드 위치 계산
+  // 섹터 rect 옆에 카드 배치 (% 좌표 — 컨테이너 기준 absolute)
   const sectorRectsRef = useRef<typeof sectorRects>([]);
+  const hoverCardRef = useRef<HTMLDivElement>(null);
 
   const positionCardBySector = useCallback((sectorName: string) => {
-    const container = containerRef.current;
-    if (!container) return;
     const sr = sectorRectsRef.current.find((r) => r.name === sectorName);
     if (!sr) return;
 
-    const cr = container.getBoundingClientRect();
-    const pw = 300;
-    const ph = 350;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-
-    // 섹터의 뷰포트 좌표
-    const secL = cr.left + (sr.x / 100) * cr.width;
-    const secR = secL + (sr.w / 100) * cr.width;
-    const secT = cr.top + (sr.y / 100) * cr.height;
-    const secB = secT + (sr.h / 100) * cr.height;
+    // 카드 너비를 컨테이너 %로 추정 (~25%)
+    const cardW = 25;
 
     // 우측 배치 → 안 되면 좌측
-    let x = secR + 2;
-    if (x + pw > vw - 8) x = secL - pw - 2;
-    if (x < 8) x = 8;
+    let x = sr.x + sr.w + 0.3;
+    if (x + cardW > 100) x = sr.x - cardW - 0.3;
+    if (x < 0) x = 0;
 
-    // Y: 섹터 상단에 맞춤, 넘치면 조정
-    let y = secT;
-    if (y + ph > vh - 8) y = secB - ph;
-    if (y < 8) y = 8;
+    // Y: 섹터 상단에 맞춤
+    let y = sr.y;
+    // 하단 넘침 방지: 대충 카드가 40% 높이 이내
+    if (y > 60) y = Math.max(0, sr.y + sr.h - 40);
 
     setPopoverPos({ x, y });
   }, []);
@@ -532,6 +525,19 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
             </div>
           );
         })}
+
+        {/* 섹터 팝오버 카드 — 컨테이너 내부 absolute 배치 */}
+        {hoveredSector && sectorStocksMap.has(hoveredSector) && (
+          <SectorHoverCard
+            sectorName={hoveredSector}
+            stocks={sectorStocksMap.get(hoveredSector)!}
+            position={popoverPos}
+            onNavigate={handleNavigate}
+            onMouseEnter={clearLeaveTimer}
+            onMouseLeave={() => setHoveredSector(null)}
+            cardRef={hoverCardRef}
+          />
+        )}
       </div>
 
       {/* 색상 범례 */}
@@ -550,17 +556,6 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
         ))}
       </div>
 
-      {/* 섹터 팝오버 카드 — 마우스가 카드까지 이동 가능 */}
-      {hoveredSector && sectorStocksMap.has(hoveredSector) && (
-        <SectorHoverCard
-          sectorName={hoveredSector}
-          stocks={sectorStocksMap.get(hoveredSector)!}
-          position={popoverPos}
-          onNavigate={handleNavigate}
-          onMouseEnter={clearLeaveTimer}
-          onMouseLeave={() => setHoveredSector(null)}
-        />
-      )}
     </>
   );
 }
