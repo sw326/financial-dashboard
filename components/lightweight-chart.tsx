@@ -59,6 +59,9 @@ function LightweightChartInner({ data, loading, chartType = "candle", maLines, r
   useEffect(() => {
     if (!chartContainerRef.current || data.length === 0) return;
 
+    // 분봉 감지: 데이터 간격이 1일(86400초) 미만이면 인트라데이
+    const isIntraday = data.length >= 2 && (data[1].time - data[0].time) < 86400;
+
     // 기존 차트 정리
     if (chartRef.current) {
       chartRef.current.remove();
@@ -77,7 +80,8 @@ function LightweightChartInner({ data, loading, chartType = "candle", maLines, r
       width: chartContainerRef.current.clientWidth,
       height: chartContainerRef.current.clientHeight,
       timeScale: {
-        timeVisible: false,
+        timeVisible: isIntraday,
+        secondsVisible: false,
         borderColor: isDark ? "#27272a" : "#e4e4e7",
       },
       rightPriceScale: {
