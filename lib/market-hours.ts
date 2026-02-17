@@ -8,14 +8,14 @@ export function isKrMarketOpen(): boolean {
   return hm >= 900 && hm <= 1530;
 }
 
-// 미국 장: 평일 09:30~16:00 ET
+// 미국 장: 평일 프리마켓 04:00 ~ 애프터마켓 20:00 ET
 export function isUsMarketOpen(): boolean {
   const now = new Date();
   const et = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
   const day = et.getDay();
   if (day === 0 || day === 6) return false;
   const hm = et.getHours() * 100 + et.getMinutes();
-  return hm >= 930 && hm <= 1600;
+  return hm >= 400 && hm <= 2000;
 }
 
 export function isAnyMarketOpen(): boolean {

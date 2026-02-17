@@ -35,14 +35,26 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // yahoo-finance2 quote
+    // yahoo-finance2 quote — 프리/포스트 마켓 가격 우선
     const result = await yf.quote(symbol);
+
+    // 프리마켓 or 포스트마켓 가격이 있으면 우선 사용
+    const prePrice = (result as Record<string, unknown>).preMarketPrice as number | undefined;
+    const postPrice = (result as Record<string, unknown>).postMarketPrice as number | undefined;
+    const extPrice = prePrice || postPrice;
+    const marketState = (result as Record<string, unknown>).marketState as string | undefined;
+    const isExtended = marketState === "PRE" || marketState === "POST" || marketState === "PREPRE" || marketState === "POSTPOST";
+
+    const price = (isExtended && extPrice) ? extPrice : (result.regularMarketPrice ?? 0);
+    const time = result.regularMarketTime
+      ? Math.floor(new Date(result.regularMarketTime).getTime() / 1000)
+      : Math.floor(Date.now() / 1000);
+
     return NextResponse.json({
-      price: result.regularMarketPrice ?? 0,
-      time: result.regularMarketTime
-        ? Math.floor(new Date(result.regularMarketTime).getTime() / 1000)
-        : Math.floor(Date.now() / 1000),
+      price,
+      time,
       volume: result.regularMarketVolume ?? undefined,
+      marketState: marketState || "REGULAR",
     });
   } catch (err) {
     console.error("Realtime API error:", err);
