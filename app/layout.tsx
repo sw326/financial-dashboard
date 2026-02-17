@@ -57,9 +57,14 @@ export default function RootLayout({
                 <AppSidebar />
                 <main className="w-full">
                   <div className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                    <div className="flex h-14 items-center px-4 gap-4">
+                    <div className="flex h-14 items-center px-4 gap-2">
                       <SidebarTrigger />
-                      <div className="flex-1 max-w-md">
+                      <nav className="flex items-center gap-1 ml-1">
+                        <a href="/market" className="px-3 py-1.5 text-sm font-medium rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">주식</a>
+                        <a href="/real-estate" className="px-3 py-1.5 text-sm font-medium rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">부동산</a>
+                      </nav>
+                      <div className="flex-1" />
+                      <div className="w-64">
                         <SearchCommand />
                       </div>
                       <ThemeToggle />
