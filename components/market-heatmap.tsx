@@ -232,6 +232,12 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
           const area = rect.w * rect.h;
           const isHovered = hoveredStock?.symbol === rect.stock.symbol;
 
+          // 미장은 티커명 사용 (간결), 국장은 종목명
+          const isUS = !rect.stock.symbol.endsWith(".KS") && !rect.stock.symbol.endsWith(".KQ");
+          const displayName = isUS
+            ? rect.stock.symbol.replace(/\^/, "")
+            : rect.stock.name;
+
           // 블록 크기에 따른 폰트 사이즈 (finviz 스타일)
           let nameFontSize: string;
           let pctFontSize: string;
@@ -239,10 +245,12 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
           let showPercent = true;
 
           if (area > 500) {
-            // 매우 큰 블록 (삼성전자 등)
-            nameFontSize = "text-base sm:text-lg";
+            nameFontSize = "text-xl sm:text-2xl";
+            pctFontSize = "text-base sm:text-lg";
+          } else if (area > 300) {
+            nameFontSize = "text-lg sm:text-xl";
             pctFontSize = "text-sm sm:text-base";
-          } else if (area > 200) {
+          } else if (area > 150) {
             nameFontSize = "text-sm sm:text-base";
             pctFontSize = "text-xs sm:text-sm";
           } else if (area > 80) {
@@ -279,12 +287,12 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
               }}
             >
               {showName && (
-                <span className={`${nameFontSize} font-bold truncate max-w-[95%] leading-tight`}>
-                  {rect.stock.name}
+                <span className={`${nameFontSize} font-bold leading-tight overflow-hidden whitespace-nowrap max-w-[95%]`} style={{ textOverflow: "clip" }}>
+                  {displayName}
                 </span>
               )}
               {showPercent && (
-                <span className={`${pctFontSize!} tabular-nums font-semibold leading-tight opacity-90`}>
+                <span className={`${pctFontSize!} tabular-nums font-semibold leading-tight opacity-90 whitespace-nowrap`}>
                   {pct >= 0 ? "+" : ""}{pct.toFixed(2)}%
                 </span>
               )}
