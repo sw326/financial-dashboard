@@ -92,15 +92,15 @@ function squarify(
   }
 }
 
-export default function MarketHeatmap() {
+export default function MarketHeatmap({ market = "all" }: { market?: string }) {
   const { data: response, isLoading } = useQuery({
-    queryKey: ["heatmap"],
+    queryKey: ["heatmap", market],
     queryFn: async () => {
-      const res = await fetch("/api/finance/heatmap?market=all");
+      const res = await fetch(`/api/finance/heatmap?market=${market}`);
       if (!res.ok) throw new Error("Failed");
       return res.json() as Promise<{ stocks: HeatmapStock[]; total: number }>;
     },
-    staleTime: 1000 * 60 * 5, // 5분
+    staleTime: 1000 * 60 * 5,
   });
   const router = useRouter();
   const stocks = response?.stocks || [];

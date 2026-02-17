@@ -38,12 +38,13 @@ async function fetchKrStocks(): Promise<HeatmapStock[]> {
           s.compareToPreviousPrice?.code === "2";
         const pct = parseFloat(s.fluctuationsRatio || "0");
 
-        // marketValueHangeul → number
+        // marketValueHangeul → number (e.g. "1,072조 6,384억원")
         let mcap = 0;
-        const m = (s.marketValueHangeul || "").match(/([\d.]+)(억|조)원?/);
-        if (m) {
-          mcap = parseFloat(m[1]) * (m[2] === "조" ? 1e12 : 1e8);
-        }
+        const cleaned = (s.marketValueHangeul || "").replace(/,/g, "");
+        const mJo = cleaned.match(/([\d.]+)조/);
+        const mEok = cleaned.match(/([\d.]+)억/);
+        if (mJo) mcap += parseFloat(mJo[1]) * 1e12;
+        if (mEok) mcap += parseFloat(mEok[1]) * 1e8;
 
         results.push({
           symbol: `${s.itemCode}.${s.stockExchangeType?.name === "KOSDAQ" ? "KQ" : "KS"}`,
