@@ -218,44 +218,60 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
     leaveTimerRef.current = setTimeout(() => setHoveredSector(null), 350);
   }, []);
 
-  // 커서 바로 옆에 카드 생성 (고정 위치, 같은 섹터면 안 움직임)
-  const positionCardAtCursor = useCallback((e: React.MouseEvent) => {
+  // 섹터 rect의 화면 좌표에서 카드 위치 계산
+  const sectorRectsRef = useRef<typeof sectorRects>([]);
+
+  const positionCardBySector = useCallback((sectorName: string) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const sr = sectorRectsRef.current.find((r) => r.name === sectorName);
+    if (!sr) return;
+
+    const cr = container.getBoundingClientRect();
     const pw = 300;
     const ph = 350;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    // 커서 바로 우하단에 붙임
-    let x = e.clientX + 2;
-    let y = e.clientY + 2;
-    // 우측 넘침 → 커서 좌측에
-    if (x + pw > vw - 8) x = e.clientX - pw - 2;
-    // 하단 넘침 → 커서 위로
-    if (y + ph > vh - 8) y = e.clientY - ph - 2;
+
+    // 섹터의 뷰포트 좌표
+    const secL = cr.left + (sr.x / 100) * cr.width;
+    const secR = secL + (sr.w / 100) * cr.width;
+    const secT = cr.top + (sr.y / 100) * cr.height;
+    const secB = secT + (sr.h / 100) * cr.height;
+
+    // 우측 배치 → 안 되면 좌측
+    let x = secR + 2;
+    if (x + pw > vw - 8) x = secL - pw - 2;
     if (x < 8) x = 8;
+
+    // Y: 섹터 상단에 맞춤, 넘치면 조정
+    let y = secT;
+    if (y + ph > vh - 8) y = secB - ph;
     if (y < 8) y = 8;
+
     setPopoverPos({ x, y });
   }, []);
 
   const handleStockMouseEnter = useCallback((stock: HeatmapStock, e: React.MouseEvent) => {
+    void e;
     clearLeaveTimer();
     const sec = stock.sector || stock.market || null;
-    // 항상 위치 업데이트 (같은 섹터라도 커서가 멀리 이동했을 수 있음)
-    positionCardAtCursor(e);
+    if (sec) positionCardBySector(sec);
     if (sec !== hoveredSector) {
       setHoveredSector(sec);
     }
-  }, [clearLeaveTimer, positionCardAtCursor, hoveredSector]);
+  }, [clearLeaveTimer, positionCardBySector, hoveredSector]);
 
   const handleStockMouseLeave = useCallback(() => {
     scheduleHide();
   }, [scheduleHide]);
 
   // 섹터 헤더 hover 핸들러
-  const handleSectorHeaderEnter = useCallback((sectorName: string, e?: React.MouseEvent) => {
+  const handleSectorHeaderEnter = useCallback((sectorName: string) => {
     clearLeaveTimer();
-    if (e) positionCardAtCursor(e);
+    positionCardBySector(sectorName);
     setHoveredSector(sectorName);
-  }, [clearLeaveTimer, positionCardAtCursor]);
+  }, [clearLeaveTimer, positionCardBySector]);
 
   const handleSectorHeaderLeave = useCallback(() => {
     scheduleHide();
@@ -365,6 +381,8 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
     return { sectorRects: finalSectorRects, stockRects: finalStockRects };
   }, [stocks]);
 
+  sectorRectsRef.current = sectorRects;
+
   if (isLoading) return <Skeleton className="h-[350px] w-full rounded-lg" />;
   if (stockRects.length === 0) return null;
 
@@ -417,7 +435,7 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
                 zIndex: 25,
                 transition: "background-color 0.15s",
               }}
-              onMouseEnter={(e) => handleSectorHeaderEnter(sr.name, e)}
+              onMouseEnter={() => handleSectorHeaderEnter(sr.name)}
               onMouseLeave={handleSectorHeaderLeave}
             >
               <span
