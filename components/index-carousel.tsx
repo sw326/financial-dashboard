@@ -32,7 +32,7 @@ export function IndexCarousel({ indices, intervalMs = 3000, itemsPerView = 4 }: 
     <div className="grid grid-cols-4 gap-2">
       {visible.map((idx) => (
         <div
-          key={`${idx.symbol}-${offset}`}
+          key={idx.symbol}
           className="rounded-lg border bg-card p-2 text-center transition-all duration-500"
         >
           <div className="text-xs text-muted-foreground">{idx.name}</div>

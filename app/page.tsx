@@ -73,7 +73,8 @@ function dealYmd() {
 export default function Home() {
   const [heatmapMarket, setHeatmapMarket] = useState("kr");
 
-  const allSymbols = useMemo(() => CAROUSEL_SYMBOLS.map((i) => i.symbol), []);
+  // CAROUSEL_SYMBOLS는 모듈 상수 → useMemo 불필요
+  const allSymbols = CAROUSEL_SYMBOLS.map((i) => i.symbol);
   const { data: carouselData = [], isLoading: loadCarousel } = useQuotes(allSymbols);
   const { data: highlights = [], isLoading: loadHl } = useQuotes(HIGHLIGHT_SYMBOLS);
   const { data: trades = [], isLoading: loadTrade } = useRecentTrades(GANGNAM_CODE, dealYmd(), 5);

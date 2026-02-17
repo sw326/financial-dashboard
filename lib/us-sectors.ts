@@ -119,5 +119,7 @@ export const US_SECTORS: Record<string, string> = {
 
   // Materials
   LIN: "Materials",
-  ACN: "Materials",
+
+  // Technology (Professional Services)
+  ACN: "Technology",
 };

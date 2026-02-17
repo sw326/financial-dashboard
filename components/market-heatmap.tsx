@@ -28,9 +28,7 @@ const LEGEND_COLORS = [
   { label: "+3%", color: "#2d8c3c" },
 ];
 
-function getTextColor(): string {
-  return "#ffffff";
-}
+const TEXT_COLOR = "#ffffff";
 
 const fmtPrice = (v: number, isKR: boolean) => {
   if (isKR) return v.toLocaleString();
@@ -39,6 +37,10 @@ const fmtPrice = (v: number, isKR: boolean) => {
 
 // 섹터 헤더 높이 (컨테이너 전체 height 기준 %)
 const HEADER_PCT = 2.2;
+
+// 팝오버 카드 배치 기준: 우측/하단 여유 공간 최소값 (% of container)
+const CARD_MIN_SPACE_RIGHT = 22; // 카드 최소 너비 ~22%
+const CARD_MIN_SPACE_BELOW = 35; // 카드 최대 높이 ~35%
 
 interface HeatmapStock {
   symbol: string;
@@ -132,7 +134,6 @@ function SectorHoverCard({
   onNavigate,
   onMouseEnter,
   onMouseLeave,
-  cardRef,
 }: {
   sectorName: string;
   stocks: HeatmapStock[];
@@ -140,7 +141,6 @@ function SectorHoverCard({
   onNavigate: (symbol: string) => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
-  cardRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const sorted = [...stocks].sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
   const display = sorted.slice(0, 15);
@@ -148,7 +148,6 @@ function SectorHoverCard({
 
   return (
     <div
-      ref={cardRef}
       className="absolute z-50 pointer-events-auto bg-popover border border-border rounded-lg shadow-xl p-3 min-w-[260px] max-w-[300px]"
       style={{
         left: `${position.x}%`,
@@ -227,7 +226,9 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
 
   // 섹터 rect 옆에 카드 배치 (% 좌표 — 컨테이너 기준 absolute)
   const sectorRectsRef = useRef<typeof sectorRects>([]);
-  const hoverCardRef = useRef<HTMLDivElement>(null);
+  // hoveredSector ref — handleStockMouseEnter의 stale closure 방지
+  const hoveredSectorRef = useRef<string | null>(null);
+  hoveredSectorRef.current = hoveredSector;
 
   const positionCardBySector = useCallback((sectorName: string) => {
     const sr = sectorRectsRef.current.find((r) => r.name === sectorName);
@@ -235,9 +236,9 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
 
     // 우측/하단 공간 체크
     const spaceRight = 100 - (sr.x + sr.w);
-    const goRight = spaceRight > 22;
+    const goRight = spaceRight > CARD_MIN_SPACE_RIGHT;
     const spaceBelow = 100 - (sr.y + sr.h);
-    const goDown = spaceBelow > 35;
+    const goDown = spaceBelow > CARD_MIN_SPACE_BELOW;
 
     const x = goRight ? sr.x + sr.w : sr.x;
     const y = goDown ? sr.y : sr.y + sr.h; // 하단: 섹터 상단부터, 상단: 섹터 하단부터 (위로)
@@ -250,10 +251,11 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
     clearLeaveTimer();
     const sec = stock.sector || stock.market || null;
     if (sec) positionCardBySector(sec);
-    if (sec !== hoveredSector) {
+    // hoveredSectorRef로 최신값 참조 → hoveredSector 의존성 제거, 불필요한 재생성 방지
+    if (sec !== hoveredSectorRef.current) {
       setHoveredSector(sec);
     }
-  }, [clearLeaveTimer, positionCardBySector, hoveredSector]);
+  }, [clearLeaveTimer, positionCardBySector]);
 
   const handleStockMouseLeave = useCallback(() => {
     scheduleHide();
@@ -447,7 +449,6 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
         {stockRects.map((rect) => {
           const pct = rect.stock.changePercent;
           const bg = getHeatmapColor(pct);
-          const txtColor = getTextColor();
           const area = rect.w * rect.h;
           const isSectorHovered = hoveredSector === (rect.stock.sector || rect.stock.market);
 
@@ -498,7 +499,7 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
                 width: `${rect.w}%`,
                 height: `${rect.h}%`,
                 backgroundColor: bg,
-                color: txtColor,
+                color: TEXT_COLOR,
                 filter: isSectorHovered ? "brightness(1.15)" : undefined,
                 zIndex: isSectorHovered ? 10 : undefined,
               }}
@@ -535,7 +536,6 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
             onNavigate={handleNavigate}
             onMouseEnter={clearLeaveTimer}
             onMouseLeave={() => setHoveredSector(null)}
-            cardRef={hoverCardRef}
           />
         )}
       </div>
