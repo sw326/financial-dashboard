@@ -1,16 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { BarChart3, TrendingUp, TrendingDown } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 import { useQuotes } from "@/hooks/use-quotes";
 import { useTrending } from "@/hooks/use-trending";
 import StockList from "@/components/stock-list";
 import MarketHeatmap from "@/components/market-heatmap";
-import { useRouter } from "next/navigation";
+import type { MarketIndex } from "@/lib/types";
 
 const INDICES = [
   { symbol: "^KS11", name: "코스피" },
@@ -18,20 +19,62 @@ const INDICES = [
   { symbol: "^GSPC", name: "S&P 500" },
   { symbol: "^IXIC", name: "나스닥" },
   { symbol: "^DJI", name: "다우존스" },
+  { symbol: "KRW=X", name: "USD/KRW" },
+  { symbol: "GC=F", name: "금" },
+  { symbol: "BTC-USD", name: "비트코인" },
 ];
 
+// 작은 카드 4개씩 캐로셀
+function IndexCarousel({ indices }: { indices: MarketIndex[] }) {
+  const [offset, setOffset] = useState(0);
+  const itemsPerView = 4;
+
+  useEffect(() => {
+    if (indices.length === 0) return;
+    const timer = setInterval(() => {
+      setOffset((prev) => (prev + itemsPerView) % indices.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [indices.length]);
+
+  const color = (v: number) => (v >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]");
+  const sign = (v: number) => (v >= 0 ? "+" : "");
+
+  const visible: MarketIndex[] = [];
+  for (let i = 0; i < itemsPerView && i < indices.length; i++) {
+    visible.push(indices[(offset + i) % indices.length]);
+  }
+
+  return (
+    <div className="grid grid-cols-4 gap-2">
+      {visible.map((idx) => (
+        <div
+          key={`${idx.symbol}-${offset}`}
+          className="rounded-lg border bg-card p-2 text-center transition-all duration-500"
+        >
+          <div className="text-xs text-muted-foreground">{idx.name}</div>
+          <div className="text-sm font-semibold tabular-nums">
+            {idx.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          </div>
+          <div className={`text-xs tabular-nums ${color(idx.changePercent)}`}>
+            {sign(idx.changePercent)}{idx.changePercent.toFixed(2)}%
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function MarketPage() {
-  const router = useRouter();
   const [tab, setTab] = useState("hot");
   const [market, setMarket] = useState("all");
   const [krMarket, setKrMarket] = useState("all");
   const [page, setPage] = useState(1);
 
-  // 주요 지수 조회
+  // 주요 지수 + 원자재 조회
   const allSymbols = useMemo(() => INDICES.map((i) => i.symbol), []);
   const { data: indicesData = [], isLoading: indicesLoading } = useQuotes(allSymbols);
 
-  // 지수 데이터에 이름 추가
   const indices = useMemo(() => {
     return indicesData.map((idx) => {
       const info = INDICES.find((i) => i.symbol === idx.symbol);
@@ -58,35 +101,16 @@ export default function MarketPage() {
         증시
       </h1>
 
-      {/* 지수 카드 그리드 */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {indicesLoading
-          ? Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 rounded-xl" />
-            ))
-          : indices.map((idx) => {
-              const isUp = idx.changePercent >= 0;
-              return (
-                <Card
-                  key={idx.symbol}
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => router.push(`/stock/${encodeURIComponent(idx.symbol)}`)}
-                >
-                  <CardContent className="p-3 space-y-1">
-                    <div className="text-sm text-muted-foreground font-medium">{idx.name}</div>
-                    <div className="text-lg font-bold tabular-nums">
-                      {idx.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                    </div>
-                    <div className={cn("flex items-center gap-1 text-sm tabular-nums", isUp ? "text-[var(--color-up)]" : "text-[var(--color-down)]")}>
-                      {isUp ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
-                      <span>{isUp ? "+" : ""}{idx.change.toFixed(2)}</span>
-                      <span>({isUp ? "+" : ""}{idx.changePercent.toFixed(2)}%)</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-      </div>
+      {/* 지수 캐로셀 - 8개 중 4개씩 순환 */}
+      {indicesLoading ? (
+        <div className="grid grid-cols-4 gap-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 rounded-lg" />
+          ))}
+        </div>
+      ) : (
+        <IndexCarousel indices={indices} />
+      )}
 
       {/* 시장 히트맵 */}
       <Card>
@@ -181,23 +205,13 @@ export default function MarketPage() {
 
         {!stocksLoading && totalPages > 1 && (
           <div className="flex justify-center gap-2 mt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page === 1}
-              onClick={() => setPage((p) => p - 1)}
-            >
+            <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
               이전
             </Button>
             <span className="text-sm text-muted-foreground flex items-center px-3">
               {page} / {totalPages}
             </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
               다음
             </Button>
           </div>
