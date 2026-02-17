@@ -215,19 +215,19 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
   }, []);
 
   const scheduleHide = useCallback(() => {
-    leaveTimerRef.current = setTimeout(() => setHoveredSector(null), 200);
+    leaveTimerRef.current = setTimeout(() => setHoveredSector(null), 350);
   }, []);
 
   // 종목 셀 hover → 팝오버 위치를 커서 근처(+10,+10)로 설정
   const handleStockMouseEnter = useCallback((stock: HeatmapStock, e: React.MouseEvent) => {
     clearLeaveTimer();
-    const cx = e.clientX + 12;
-    const cy = e.clientY + 12;
+    const cx = e.clientX + 4;
+    const cy = e.clientY + 4;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const pw = 340;
     const ph = 420;
-    const finalX = cx + pw > vw - 16 ? e.clientX - pw - 12 : cx;
+    const finalX = cx + pw > vw - 16 ? e.clientX - pw - 4 : cx;
     const finalY = cy + ph > vh - 16 ? Math.max(16, vh - ph - 16) : cy;
     setPopoverPos({ x: Math.max(16, finalX), y: Math.max(16, finalY) });
     setHoveredSector(stock.sector || stock.market || null);
