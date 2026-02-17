@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import YahooFinance from "yahoo-finance2";
 import { getKrStockName } from "@/lib/kr-stock-names";
 import { US_SECTORS } from "@/lib/us-sectors";
+import { getKrSector } from "@/lib/kr-sectors";
 
 const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
@@ -17,98 +18,21 @@ interface HeatmapStock {
   sector?: string;
 }
 
-// 업종-종목 매핑 캐시 (5분)
-let sectorCache: { map: Map<string, string>; ts: number } | null = null;
-const SECTOR_CACHE_TTL = 5 * 60 * 1000;
-
-// 네이버 업종 API에서 종목→업종 매핑 구축
-async function buildSectorMap(): Promise<Map<string, string>> {
-  if (sectorCache && Date.now() - sectorCache.ts < SECTOR_CACHE_TTL) {
-    return sectorCache.map;
-  }
-
-  const map = new Map<string, string>();
-
-  try {
-    // 1. 업종 목록 가져오기
-    const listRes = await fetch(`${NAVER_API}/industry`, {
-      headers: { "User-Agent": "Mozilla/5.0" },
-    });
-    if (!listRes.ok) return map;
-    const listData = await listRes.json();
-    const groups: { no: string; name: string; totalCount: number }[] =
-      listData.groups || [];
-
-    // 상위 25개 업종 (totalCount 기준 정렬)
-    const topGroups = groups
-      .sort((a, b) => b.totalCount - a.totalCount)
-      .slice(0, 25);
-
-    // 2. 병렬로 각 업종의 종목 목록 가져오기
-    const results = await Promise.all(
-      topGroups.map(async (g) => {
-        try {
-          const res = await fetch(
-            `${NAVER_API}/industry/${g.no}?page=1&pageSize=100`,
-            { headers: { "User-Agent": "Mozilla/5.0" } }
-          );
-          if (!res.ok) return [];
-          const data = await res.json();
-          return (data.stocks || []).map(
-            (s: { itemCode: string }) => ({
-              code: s.itemCode,
-              sector: g.name,
-            })
-          );
-        } catch {
-          return [];
-        }
-      })
-    );
-
-    for (const stocks of results) {
-      for (const s of stocks) {
-        if (!map.has(s.code)) {
-          map.set(s.code, s.sector);
-        }
-      }
-    }
-  } catch (e) {
-    console.error("Sector map build error:", e);
-  }
-
-  sectorCache = { map, ts: Date.now() };
-  return map;
-}
-
-// 네이버 API에서 코스피 시총 상위 200개
+// 네이버 API에서 코스피 시총 상위 100개 (업종 매핑은 KRX 하드코딩 사용)
 async function fetchKrStocks(): Promise<HeatmapStock[]> {
-  // 시총 100개와 섹터 매핑을 병렬로 가져옴
-  const [stockPages, sectorMap] = await Promise.all([
-    Promise.all(
-      [1].map(async (page) => {
-        try {
-          const res = await fetch(
-            `${NAVER_API}/marketValue?page=${page}&pageSize=100`,
-            {
-              headers: { "User-Agent": "Mozilla/5.0" },
-              next: { revalidate: 300 },
-            }
-          );
-          if (!res.ok) return [];
-          const data = await res.json();
-          return data.stocks || [];
-        } catch (e) {
-          console.error(`KR heatmap page ${page} error:`, e);
-          return [];
-        }
-      })
-    ),
-    buildSectorMap(),
-  ]);
+  try {
+    const res = await fetch(
+      `${NAVER_API}/marketValue?page=1&pageSize=100`,
+      {
+        headers: { "User-Agent": "Mozilla/5.0" },
+        next: { revalidate: 300 },
+      }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    const stocks = data.stocks || [];
 
-  const results: HeatmapStock[] = [];
-  for (const stocks of stockPages) {
+    const results: HeatmapStock[] = [];
     for (const s of stocks) {
       const pct = parseFloat(s.fluctuationsRatio || "0");
 
@@ -120,7 +44,8 @@ async function fetchKrStocks(): Promise<HeatmapStock[]> {
       if (mEok) mcap += parseFloat(mEok[1]) * 1e8;
 
       const code = s.itemCode as string;
-      const sector = sectorMap.get(code) || "기타";
+      // KRX 하드코딩 매핑 사용 (네이버 업종 API 대신)
+      const sector = getKrSector(code) || "기타";
 
       results.push({
         symbol: `${code}.${s.stockExchangeType?.name === "KOSDAQ" ? "KQ" : "KS"}`,
@@ -132,9 +57,12 @@ async function fetchKrStocks(): Promise<HeatmapStock[]> {
         sector,
       });
     }
-  }
 
-  return results;
+    return results;
+  } catch (e) {
+    console.error("KR heatmap error:", e);
+    return [];
+  }
 }
 
 // Yahoo Finance에서 미장 시총 상위 (batch quote)

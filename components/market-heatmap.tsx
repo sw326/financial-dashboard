@@ -4,6 +4,7 @@ import { useMemo, useState, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 function getHeatmapColor(pct: number): string {
   if (pct >= 3) return "#2d8c3c";
@@ -21,7 +22,7 @@ const LEGEND_COLORS = [
   { label: "-3%", color: "#8b1a2b" },
   { label: "-2%", color: "#6b2030" },
   { label: "-1%", color: "#4a2028" },
-  { label: "0%", color: "#2a2a2e" },
+  { label: "0%",  color: "#2a2a2e" },
   { label: "+1%", color: "#1e3a28" },
   { label: "+2%", color: "#245f30" },
   { label: "+3%", color: "#2d8c3c" },
@@ -31,18 +32,13 @@ function getTextColor(): string {
   return "#ffffff";
 }
 
-const fmtKrw = (v: number) => {
-  if (v >= 1e12) return (v / 1e12).toFixed(1) + "조";
-  if (v >= 1e8) return (v / 1e8).toFixed(0) + "억";
-  if (v >= 1e6) return (v / 1e6).toFixed(1) + "M";
-  if (v >= 1e3) return (v / 1e3).toFixed(1) + "K";
-  return v.toFixed(0);
-};
-
 const fmtPrice = (v: number, isKR: boolean) => {
   if (isKR) return v.toLocaleString();
   return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
 };
+
+// 섹터 헤더 높이 (컨테이너 전체 height 기준 %)
+const HEADER_PCT = 2.2;
 
 interface HeatmapStock {
   symbol: string;
@@ -66,6 +62,7 @@ interface TreemapRect<T extends WeightedItem> {
   item: T;
 }
 
+// Squarified treemap — 큰 항목이 좌상단부터 배치
 function squarify<T extends WeightedItem>(
   items: T[],
   x: number, y: number, w: number, h: number
@@ -94,6 +91,7 @@ function squarify<T extends WeightedItem>(
   const leftWeight = left.reduce((s, i) => s + i.weight, 0);
   const ratio = leftWeight / totalWeight;
 
+  // 가로가 넓으면 좌우 분할, 세로가 길면 상하 분할
   if (w >= h) {
     const splitX = w * ratio;
     return [
@@ -115,17 +113,32 @@ interface SectorGroup extends WeightedItem {
   totalMcap: number;
 }
 
-// Sector hover card - shows list of stocks in that sector
+interface SectorRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  name: string;
+  headerH: number; // 이 섹터의 헤더 높이(% of container)
+}
+
+// ─────────────────────────────────────────────────────────────
+// SectorHoverCard — 섹터 내 종목 리스트 팝오버
+// ─────────────────────────────────────────────────────────────
 function SectorHoverCard({
   sectorName,
   stocks,
   position,
   onNavigate,
+  onMouseEnter,
+  onMouseLeave,
 }: {
   sectorName: string;
   stocks: HeatmapStock[];
   position: { x: number; y: number };
   onNavigate: (symbol: string) => void;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
 }) {
   const sorted = [...stocks].sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
   const display = sorted.slice(0, 15);
@@ -135,6 +148,8 @@ function SectorHoverCard({
     <div
       className="fixed z-50 pointer-events-auto bg-popover border border-border rounded-lg shadow-xl p-3 min-w-[260px] max-w-[340px]"
       style={{ left: position.x, top: position.y }}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       <div className="font-semibold text-sm text-foreground mb-2 pb-1.5 border-b border-border">
         {sectorName}
@@ -172,6 +187,9 @@ function SectorHoverCard({
   );
 }
 
+// ─────────────────────────────────────────────────────────────
+// MarketHeatmap
+// ─────────────────────────────────────────────────────────────
 export default function MarketHeatmap({ market = "all" }: { market?: string }) {
   const { data: response, isLoading } = useQuery({
     queryKey: ["heatmap", market],
@@ -188,34 +206,53 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
 
   const [hoveredSector, setHoveredSector] = useState<string | null>(null);
   const [popoverPos, setPopoverPos] = useState({ x: 0, y: 0 });
-  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleMouseEnter = useCallback((stock: HeatmapStock, e: React.MouseEvent) => {
-    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const viewportW = window.innerWidth;
-    const viewportH = window.innerHeight;
-    const popoverW = 320;
-    const popoverH = 300;
-    let x = rect.right + 8;
-    let y = rect.top;
-    if (x + popoverW > viewportW - 16) x = rect.left - popoverW - 8;
-    if (y + popoverH > viewportH - 16) y = viewportH - popoverH - 16;
-    if (y < 16) y = 16;
-    setPopoverPos({ x, y });
+  // 마우스 leave 딜레이 — 카드로 이동할 시간 확보
+  const leaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearLeaveTimer = useCallback(() => {
+    if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current);
+  }, []);
+
+  const scheduleHide = useCallback(() => {
+    leaveTimerRef.current = setTimeout(() => setHoveredSector(null), 200);
+  }, []);
+
+  // 종목 셀 hover → 팝오버 위치를 커서 근처(+10,+10)로 설정
+  const handleStockMouseEnter = useCallback((stock: HeatmapStock, e: React.MouseEvent) => {
+    clearLeaveTimer();
+    const cx = e.clientX + 12;
+    const cy = e.clientY + 12;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const pw = 340;
+    const ph = 420;
+    const finalX = cx + pw > vw - 16 ? e.clientX - pw - 12 : cx;
+    const finalY = cy + ph > vh - 16 ? Math.max(16, vh - ph - 16) : cy;
+    setPopoverPos({ x: Math.max(16, finalX), y: Math.max(16, finalY) });
     setHoveredSector(stock.sector || stock.market || null);
-  }, []);
+  }, [clearLeaveTimer]);
 
-  const handleMouseLeave = useCallback(() => {
-    hoverTimeoutRef.current = setTimeout(() => setHoveredSector(null), 150);
-  }, []);
+  const handleStockMouseLeave = useCallback(() => {
+    scheduleHide();
+  }, [scheduleHide]);
+
+  // 섹터 헤더 hover 핸들러
+  const handleSectorHeaderEnter = useCallback((sectorName: string) => {
+    clearLeaveTimer();
+    setHoveredSector(sectorName);
+  }, [clearLeaveTimer]);
+
+  const handleSectorHeaderLeave = useCallback(() => {
+    scheduleHide();
+  }, [scheduleHide]);
 
   const handleNavigate = useCallback((symbol: string) => {
     setHoveredSector(null);
     router.push(`/stock/${encodeURIComponent(symbol)}`);
   }, [router]);
 
-  // Build sector → stock map for hover card
+  // sector → stocks 맵 (팝오버용)
   const sectorStocksMap = useMemo(() => {
     const map = new Map<string, HeatmapStock[]>();
     for (const s of stocks) {
@@ -226,13 +263,13 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
     return map;
   }, [stocks]);
 
-  // Build nested sector → stock treemap
+  // Treemap 계산
   const { sectorRects, stockRects } = useMemo(() => {
-    if (stocks.length === 0) return { sectorRects: [], stockRects: [] };
+    if (stocks.length === 0) return { sectorRects: [] as SectorRect[], stockRects: [] as { x: number; y: number; w: number; h: number; stock: HeatmapStock & { weight: number } }[] };
 
     const hasSectors = stocks.some((s) => s.sector);
 
-    // If no sector info, fall back to flat treemap
+    // 섹터 정보 없으면 flat treemap
     if (!hasSectors) {
       const totalMcap = stocks.reduce((s, st) => s + (st.marketCap || 0), 0);
       if (totalMcap === 0) return { sectorRects: [], stockRects: [] };
@@ -243,14 +280,11 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
       const rects = squarify(weighted, 0, 0, 100, 100);
       return {
         sectorRects: [],
-        stockRects: rects.map((r) => ({
-          x: r.x, y: r.y, w: r.w, h: r.h,
-          stock: r.item,
-        })),
+        stockRects: rects.map((r) => ({ x: r.x, y: r.y, w: r.w, h: r.h, stock: r.item })),
       };
     }
 
-    // Group by sector
+    // 섹터 그룹 구성
     const sectorMap = new Map<string, HeatmapStock[]>();
     for (const s of stocks) {
       const sec = s.sector || "기타";
@@ -269,34 +303,42 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
         stocks: sectorStocks
           .filter((s) => (s.marketCap || 0) > 0)
           .map((s) => ({ ...s, weight: s.marketCap || 0 }))
-          .sort((a, b) => b.weight - a.weight),
+          .sort((a, b) => b.weight - a.weight), // 큰 종목 먼저
         totalMcap: sectorTotalMcap,
         weight: sectorTotalMcap / totalMcap,
       });
     }
+    // 큰 섹터가 좌상단에 오도록 내림차순 정렬
     sectorGroups.sort((a, b) => b.weight - a.weight);
 
-    // Level 1: sector layout
+    // Level 1: 섹터 레이아웃 (큰 섹터부터 좌상단에 배치)
     const sectorLayout = squarify(sectorGroups, 0, 0, 100, 100);
 
-    const SECTOR_PAD = 0.2; // 0.2% padding on each side for sector gaps
-    const finalSectorRects: { x: number; y: number; w: number; h: number; name: string }[] = [];
+    const SECTOR_PAD = 0.2; // 섹터 간 간격 (%)
+    const finalSectorRects: SectorRect[] = [];
     const finalStockRects: { x: number; y: number; w: number; h: number; stock: HeatmapStock & { weight: number } }[] = [];
 
     for (const sr of sectorLayout) {
       const sg = sr.item;
-      // Inset sector rect for visual gap between sectors
       const px = sr.x + SECTOR_PAD;
       const py = sr.y + SECTOR_PAD;
       const pw = sr.w - SECTOR_PAD * 2;
       const ph = sr.h - SECTOR_PAD * 2;
 
-      finalSectorRects.push({ x: px, y: py, w: pw, h: ph, name: sg.name });
+      // 헤더 높이: 섹터가 충분히 크면 HEADER_PCT, 너무 작으면 섹터 높이의 20% (최소 0)
+      const headerH = ph > HEADER_PCT * 2 ? Math.min(HEADER_PCT, ph * 0.25) : 0;
 
-      // Level 2: stocks within padded sector area
+      finalSectorRects.push({ x: px, y: py, w: pw, h: ph, name: sg.name, headerH });
+
+      // Level 2: 종목은 헤더 아래 영역에서만 배치
+      const stockAreaY = py + headerH;
+      const stockAreaH = ph - headerH;
+
+      if (stockAreaH <= 0 || sg.stocks.length === 0) continue;
+
       const sectorTotal = sg.stocks.reduce((s, st) => s + st.weight, 0);
       const normalized = sg.stocks.map((s) => ({ ...s, weight: s.weight / sectorTotal }));
-      const stockLayout = squarify(normalized, px, py, pw, ph);
+      const stockLayout = squarify(normalized, px, stockAreaY, pw, stockAreaH);
 
       for (const stk of stockLayout) {
         finalStockRects.push({
@@ -315,19 +357,17 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
   return (
     <>
       <div ref={containerRef} className="relative w-full bg-zinc-900" style={{ aspectRatio: "16/9" }}>
-        {/* Sector borders & labels */}
+
+        {/* ── 섹터 border 프레임 (pointer-events: none) ── */}
         {sectorRects.map((sr) => {
-          const area = sr.w * sr.h;
-          const showLabel = area > 15;
           const isHovered = hoveredSector === sr.name;
           return (
             <div
-              key={`sector-${sr.name}`}
-              className={`absolute border-2 transition-colors duration-150 ${
-                isHovered
-                  ? "border-amber-400/90 dark:border-amber-400/80"
-                  : "border-zinc-700/80 dark:border-zinc-600/60"
-              }`}
+              key={`border-${sr.name}`}
+              className={cn(
+                "absolute border-2 transition-colors duration-150",
+                isHovered ? "border-amber-400/90" : "border-zinc-700/60"
+              )}
               style={{
                 left: `${sr.x}%`,
                 top: `${sr.y}%`,
@@ -336,25 +376,49 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
                 zIndex: 20,
                 pointerEvents: "none",
               }}
+            />
+          );
+        })}
+
+        {/* ── 섹터 헤더 바 (종목 타일 위, 별도 바) ── */}
+        {sectorRects.map((sr) => {
+          if (sr.headerH <= 0) return null;
+          const isHovered = hoveredSector === sr.name;
+          const area = sr.w * sr.h;
+          if (area < 8) return null; // 너무 작은 섹터는 헤더 생략
+
+          return (
+            <div
+              key={`header-${sr.name}`}
+              className="absolute flex items-center px-1.5 truncate cursor-default select-none"
+              style={{
+                left: `${sr.x}%`,
+                top: `${sr.y}%`,
+                width: `${sr.w}%`,
+                height: `${sr.headerH}%`,
+                backgroundColor: isHovered
+                  ? "rgba(30,30,34,1)"
+                  : "rgba(24,24,27,0.88)",
+                borderBottom: `1px solid ${isHovered ? "rgba(251,191,36,0.5)" : "rgba(63,63,70,0.6)"}`,
+                zIndex: 25,
+                transition: "background-color 0.15s",
+              }}
+              onMouseEnter={() => handleSectorHeaderEnter(sr.name)}
+              onMouseLeave={handleSectorHeaderLeave}
             >
-              {showLabel && (
-                <div
-                  className="absolute top-0 left-0 right-0 text-center text-[9px] sm:text-[11px] font-medium text-zinc-300 tracking-wide uppercase truncate"
-                  style={{
-                    zIndex: 25,
-                    lineHeight: "16px",
-                    backgroundColor: "rgba(24,24,27,0.75)",
-                    borderBottom: "1px solid rgba(63,63,70,0.6)",
-                  }}
-                >
-                  {sr.name}
-                </div>
-              )}
+              <span
+                className={cn(
+                  "text-[9px] sm:text-[11px] font-medium leading-none truncate",
+                  isHovered ? "text-amber-300" : "text-zinc-300"
+                )}
+              >
+                {sr.name}
+              </span>
             </div>
           );
         })}
 
-        {/* Stock cells */}
+        {/* ── 종목 셀 ── */}
         {stockRects.map((rect) => {
           const pct = rect.stock.changePercent;
           const bg = getHeatmapColor(pct);
@@ -368,7 +432,7 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
             : rect.stock.name;
 
           let nameFontSize: string;
-          let pctFontSize: string = "";
+          let pctFontSize = "";
           let showName = true;
           let showPercent = true;
 
@@ -400,8 +464,8 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
             <div
               key={rect.stock.symbol}
               onClick={() => handleNavigate(rect.stock.symbol)}
-              onMouseEnter={(e) => handleMouseEnter(rect.stock, e)}
-              onMouseLeave={handleMouseLeave}
+              onMouseEnter={(e) => handleStockMouseEnter(rect.stock, e)}
+              onMouseLeave={handleStockMouseLeave}
               className="absolute cursor-pointer flex flex-col items-center justify-center overflow-hidden border border-black/30 dark:border-black/50 transition-all"
               style={{
                 left: `${rect.x}%`,
@@ -417,7 +481,10 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
               {showName && (
                 <span
                   className={`${nameFontSize} font-bold leading-tight overflow-hidden whitespace-nowrap max-w-[95%]`}
-                  style={{ textOverflow: "clip", textShadow: "1px 1px 2px rgba(0,0,0,0.6), 0 0 4px rgba(0,0,0,0.3)" }}
+                  style={{
+                    textOverflow: "clip",
+                    textShadow: "1px 1px 2px rgba(0,0,0,0.6), 0 0 4px rgba(0,0,0,0.3)",
+                  }}
                 >
                   {displayName}
                 </span>
@@ -451,12 +518,15 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
         ))}
       </div>
 
+      {/* 섹터 팝오버 카드 — 마우스가 카드까지 이동 가능 */}
       {hoveredSector && sectorStocksMap.has(hoveredSector) && (
         <SectorHoverCard
           sectorName={hoveredSector}
           stocks={sectorStocksMap.get(hoveredSector)!}
           position={popoverPos}
           onNavigate={handleNavigate}
+          onMouseEnter={clearLeaveTimer}
+          onMouseLeave={() => setHoveredSector(null)}
         />
       )}
     </>
