@@ -240,7 +240,7 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
               onClick={() => handleNavigate(rect.stock.symbol)}
               onMouseEnter={(e) => handleMouseEnter(rect.stock, e)}
               onMouseLeave={handleMouseLeave}
-              className="absolute cursor-pointer flex flex-col items-center justify-center overflow-hidden border-[0.5px] border-black/20 dark:border-white/10 transition-all"
+              className="absolute cursor-pointer flex flex-col items-center justify-center overflow-hidden border border-black/30 dark:border-black/50 transition-all"
               style={{
                 left: `${rect.x}%`,
                 top: `${rect.y}%`,

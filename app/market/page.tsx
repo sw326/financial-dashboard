@@ -119,7 +119,6 @@ export default function MarketPage() {
           <CardTitle className="text-base">시장 히트맵</CardTitle>
           <div className="flex gap-1 bg-muted rounded-lg p-1">
             {[
-              { value: "all", label: "전체" },
               { value: "kr", label: "국장" },
               { value: "us", label: "미장" },
             ].map((m) => (
