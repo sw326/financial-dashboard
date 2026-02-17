@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,16 +19,17 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { KR_STOCK_NAMES } from "@/lib/kr-stock-names";
+import { SEOUL_GU } from "@/lib/constants";
 
-// 한국 종목: KR_STOCK_NAMES 매핑 테이블에서 자동 생성
+// 한국 종목
 const KR_STOCKS = Object.entries(KR_STOCK_NAMES).map(([symbol, name]) => ({
   symbol,
   name,
   category: "한국",
 }));
 
-// 미국 주요 종목 및 지수 (영문 그대로 유지)
-const OTHER_STOCKS = [
+// 미국 주요 종목
+const US_STOCKS = [
   { symbol: "AAPL", name: "Apple", category: "미국" },
   { symbol: "MSFT", name: "Microsoft", category: "미국" },
   { symbol: "GOOGL", name: "Alphabet", category: "미국" },
@@ -36,6 +37,10 @@ const OTHER_STOCKS = [
   { symbol: "NVDA", name: "NVIDIA", category: "미국" },
   { symbol: "TSLA", name: "Tesla", category: "미국" },
   { symbol: "META", name: "Meta", category: "미국" },
+];
+
+// 지수 리스트
+const INDEX_STOCKS = [
   { symbol: "^KS11", name: "코스피", category: "지수" },
   { symbol: "^KQ11", name: "코스닥", category: "지수" },
   { symbol: "^GSPC", name: "S&P 500", category: "지수" },
@@ -43,44 +48,109 @@ const OTHER_STOCKS = [
   { symbol: "^DJI", name: "다우존스", category: "지수" },
 ];
 
-// 미리 정의된 주요 종목 리스트
-const POPULAR_STOCKS = [...KR_STOCKS, ...OTHER_STOCKS];
+// 인기 종목 10개
+const POPULAR_STOCKS = [
+  KR_STOCKS[0], // 삼성전자
+  KR_STOCKS[1], // SK하이닉스
+  KR_STOCKS[7], // NAVER
+  KR_STOCKS[8], // 카카오
+  KR_STOCKS[4], // 현대차
+  US_STOCKS[4], // NVIDIA
+  US_STOCKS[5], // Tesla
+  US_STOCKS[0], // Apple
+  INDEX_STOCKS[0], // 코스피
+  INDEX_STOCKS[2], // S&P 500
+];
+
+interface SearchResult {
+  symbol: string;
+  name: string;
+  type: string;
+  exchange: string;
+}
 
 export default function SearchCommand() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [apiResults, setApiResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 검색어로 필터링
-  const filtered = POPULAR_STOCKS.filter((stock) =>
-    stock.name.toLowerCase().includes(search.toLowerCase()) ||
-    stock.symbol.toLowerCase().includes(search.toLowerCase())
-  );
+  // Debounced API search
+  const fetchSearch = useCallback((query: string) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
 
-  // 카테고리별로 그룹화
-  const grouped = filtered.reduce((acc, stock) => {
-    if (!acc[stock.category]) acc[stock.category] = [];
-    acc[stock.category].push(stock);
-    return acc;
-  }, {} as Record<string, typeof POPULAR_STOCKS>);
+    if (!query.trim()) {
+      setApiResults([]);
+      setLoading(false);
+      return;
+    }
 
-  const handleSelect = (symbol: string) => {
+    setLoading(true);
+    timerRef.current = setTimeout(() => {
+      const controller = new AbortController();
+
+      fetch(`/api/finance/search?q=${encodeURIComponent(query)}`, {
+        signal: controller.signal,
+      })
+        .then((res) => res.json())
+        .then((data: { results: SearchResult[] }) => {
+          setApiResults(data.results || []);
+          setLoading(false);
+        })
+        .catch(() => {
+          setLoading(false);
+        });
+    }, 300);
+  }, []);
+
+  useEffect(() => {
+    fetchSearch(search);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [search, fetchSearch]);
+
+  // 로컬 부동산 매칭
+  const matchedGu = search.trim()
+    ? SEOUL_GU.filter((gu) => gu.name.includes(search.trim()))
+    : SEOUL_GU;
+
+  // 로컬 지수 매칭
+  const matchedIndex = search.trim()
+    ? INDEX_STOCKS.filter(
+        (idx) =>
+          idx.name.toLowerCase().includes(search.toLowerCase()) ||
+          idx.symbol.toLowerCase().includes(search.toLowerCase())
+      )
+    : [];
+
+  const handleSelectStock = (symbol: string) => {
     setOpen(false);
     setSearch("");
     router.push(`/stock/${encodeURIComponent(symbol)}`);
   };
 
-  // 키보드 단축키: Cmd+K / Ctrl+K
+  const handleSelectGu = (code: string) => {
+    setOpen(false);
+    setSearch("");
+    router.push(`/real-estate/${code}`);
+  };
+
+  // Cmd+K 단축키
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setOpen((open) => !open);
+        setOpen((o) => !o);
       }
     };
     document.addEventListener("keydown", down);
     return () => document.removeEventListener("keydown", down);
   }, []);
+
+  const hasSearch = search.trim().length > 0;
 
   return (
     <>
@@ -102,30 +172,107 @@ export default function SearchCommand() {
           <DialogHeader className="px-4 pt-4">
             <DialogTitle>종목 검색</DialogTitle>
           </DialogHeader>
-          <Command>
+          <Command shouldFilter={false}>
             <CommandInput
               placeholder="종목명 또는 심볼 입력..."
               value={search}
               onValueChange={setSearch}
             />
             <CommandList>
-              <CommandEmpty>검색 결과가 없습니다</CommandEmpty>
-              {Object.entries(grouped).map(([category, stocks]) => (
-                <CommandGroup key={category} heading={category}>
-                  {stocks.map((stock) => (
-                    <CommandItem
-                      key={stock.symbol}
-                      onSelect={() => handleSelect(stock.symbol)}
-                      className="cursor-pointer"
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-medium">{stock.name}</span>
-                        <span className="text-xs text-muted-foreground">{stock.symbol}</span>
-                      </div>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              ))}
+              {loading && (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <span className="ml-2 text-sm text-muted-foreground">검색 중...</span>
+                </div>
+              )}
+
+              {!hasSearch && (
+                <>
+                  <CommandGroup heading="인기 종목">
+                    {POPULAR_STOCKS.map((stock) => (
+                      <CommandItem
+                        key={stock.symbol}
+                        onSelect={() => handleSelectStock(stock.symbol)}
+                        className="cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="font-medium">{stock.name}</span>
+                          <span className="text-xs text-muted-foreground">{stock.symbol}</span>
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                  <CommandGroup heading="부동산">
+                    {SEOUL_GU.map((gu) => (
+                      <CommandItem
+                        key={gu.code}
+                        onSelect={() => handleSelectGu(gu.code)}
+                        className="cursor-pointer"
+                      >
+                        <span className="font-medium">{gu.name}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </>
+              )}
+
+              {hasSearch && !loading && (
+                <>
+                  {apiResults.length > 0 && (
+                    <CommandGroup heading="종목">
+                      {apiResults.map((result) => (
+                        <CommandItem
+                          key={result.symbol}
+                          onSelect={() => handleSelectStock(result.symbol)}
+                          className="cursor-pointer"
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-medium">{result.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {result.symbol} · {result.exchange}
+                            </span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  )}
+
+                  {matchedGu.length > 0 && (
+                    <CommandGroup heading="부동산">
+                      {matchedGu.map((gu) => (
+                        <CommandItem
+                          key={gu.code}
+                          onSelect={() => handleSelectGu(gu.code)}
+                          className="cursor-pointer"
+                        >
+                          <span className="font-medium">{gu.name}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  )}
+
+                  {matchedIndex.length > 0 && (
+                    <CommandGroup heading="지수">
+                      {matchedIndex.map((idx) => (
+                        <CommandItem
+                          key={idx.symbol}
+                          onSelect={() => handleSelectStock(idx.symbol)}
+                          className="cursor-pointer"
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-medium">{idx.name}</span>
+                            <span className="text-xs text-muted-foreground">{idx.symbol}</span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  )}
+
+                  {apiResults.length === 0 && matchedGu.length === 0 && matchedIndex.length === 0 && (
+                    <CommandEmpty>검색 결과가 없습니다</CommandEmpty>
+                  )}
+                </>
+              )}
             </CommandList>
           </Command>
         </DialogContent>
