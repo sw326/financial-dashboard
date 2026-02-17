@@ -218,20 +218,35 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
     leaveTimerRef.current = setTimeout(() => setHoveredSector(null), 350);
   }, []);
 
-  // 종목 셀 hover → 팝오버 위치를 커서 근처(+10,+10)로 설정
-  const handleStockMouseEnter = useCallback((stock: HeatmapStock, e: React.MouseEvent) => {
-    clearLeaveTimer();
-    const cx = e.clientX + 4;
-    const cy = e.clientY + 4;
+  // 커서 위치 업데이트 (카드가 마우스를 따라감)
+  const updatePopoverPos = useCallback((e: React.MouseEvent) => {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const pw = 340;
     const ph = 420;
-    const finalX = cx + pw > vw - 16 ? e.clientX - pw - 4 : cx;
+    const cx = e.clientX + 8;
+    const cy = e.clientY + 8;
+    const finalX = cx + pw > vw - 16 ? e.clientX - pw - 8 : cx;
     const finalY = cy + ph > vh - 16 ? Math.max(16, vh - ph - 16) : cy;
     setPopoverPos({ x: Math.max(16, finalX), y: Math.max(16, finalY) });
+  }, []);
+
+  const handleStockMouseEnter = useCallback((stock: HeatmapStock, e: React.MouseEvent) => {
+    clearLeaveTimer();
+    updatePopoverPos(e);
     setHoveredSector(stock.sector || stock.market || null);
-  }, [clearLeaveTimer]);
+  }, [clearLeaveTimer, updatePopoverPos]);
+
+  const handleStockMouseMove = useCallback((stock: HeatmapStock, e: React.MouseEvent) => {
+    const sec = stock.sector || stock.market || null;
+    if (sec === hoveredSector) {
+      updatePopoverPos(e);
+    } else {
+      clearLeaveTimer();
+      updatePopoverPos(e);
+      setHoveredSector(sec);
+    }
+  }, [hoveredSector, clearLeaveTimer, updatePopoverPos]);
 
   const handleStockMouseLeave = useCallback(() => {
     scheduleHide();
@@ -465,6 +480,7 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
               key={rect.stock.symbol}
               onClick={() => handleNavigate(rect.stock.symbol)}
               onMouseEnter={(e) => handleStockMouseEnter(rect.stock, e)}
+              onMouseMove={(e) => handleStockMouseMove(rect.stock, e)}
               onMouseLeave={handleStockMouseLeave}
               className="absolute cursor-pointer flex flex-col items-center justify-center overflow-hidden border border-black/30 dark:border-black/50 transition-all"
               style={{
