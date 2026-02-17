@@ -136,7 +136,7 @@ function SectorHoverCard({
 }: {
   sectorName: string;
   stocks: HeatmapStock[];
-  position: { x: number; y: number };
+  position: { x: number; y: number; side: "right" | "left" };
   onNavigate: (symbol: string) => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
@@ -150,7 +150,11 @@ function SectorHoverCard({
     <div
       ref={cardRef}
       className="absolute z-50 pointer-events-auto bg-popover border border-border rounded-lg shadow-xl p-3 min-w-[260px] max-w-[300px]"
-      style={{ left: `${position.x}%`, top: `${position.y}%` }}
+      style={{
+        left: `${position.x}%`,
+        top: `${position.y}%`,
+        transform: position.side === "left" ? "translateX(-100%)" : undefined,
+      }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
@@ -208,7 +212,7 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [hoveredSector, setHoveredSector] = useState<string | null>(null);
-  const [popoverPos, setPopoverPos] = useState({ x: 0, y: 0 });
+  const [popoverPos, setPopoverPos] = useState({ x: 0, y: 0, side: "right" as "right" | "left" });
 
   // 마우스 leave 딜레이 — 카드로 이동할 시간 확보
   const leaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -229,20 +233,16 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
     const sr = sectorRectsRef.current.find((r) => r.name === sectorName);
     if (!sr) return;
 
-    // 카드 너비를 컨테이너 %로 추정 (~25%)
-    const cardW = 25;
+    // 우측 공간 체크
+    const spaceRight = 100 - (sr.x + sr.w);
+    const goRight = spaceRight > 22;
 
-    // 우측 배치 → 안 되면 좌측
-    let x = sr.x + sr.w;
-    if (x + cardW > 100) x = sr.x - cardW;
-    if (x < 0) x = 0;
-
-    // Y: 섹터 상단에 맞춤
+    // 우측: 카드 좌측 = 섹터 우측, 좌측: 카드 우측 = 섹터 좌측 (transform으로)
+    const x = goRight ? sr.x + sr.w : sr.x;
     let y = sr.y;
-    // 하단 넘침 방지: 대충 카드가 40% 높이 이내
-    if (y > 60) y = Math.max(0, sr.y + sr.h - 40);
+    if (y > 55) y = Math.max(0, sr.y + sr.h - 45);
 
-    setPopoverPos({ x, y });
+    setPopoverPos({ x, y, side: goRight ? "right" : "left" });
   }, []);
 
   const handleStockMouseEnter = useCallback((stock: HeatmapStock, e: React.MouseEvent) => {
