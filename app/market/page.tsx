@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { BarChart3 } from "lucide-react";
 import { useQuotes } from "@/hooks/use-quotes";
@@ -131,14 +130,12 @@ export default function MarketPage() {
 
       {/* 탭 + 마켓 필터 */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-        <Tabs value={tab} onValueChange={handleTabChange} className="flex-1">
-          <TabsList>
-            <TabsTrigger value="hot">인기종목</TabsTrigger>
-            <TabsTrigger value="volume">거래량 TOP</TabsTrigger>
-            <TabsTrigger value="gainers">급등</TabsTrigger>
-            <TabsTrigger value="losers">급락</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <ToggleGroup type="single" value={tab} onValueChange={(v) => v && handleTabChange(v)} className="flex-1">
+          <ToggleGroupItem value="hot">인기종목</ToggleGroupItem>
+          <ToggleGroupItem value="volume">거래량 TOP</ToggleGroupItem>
+          <ToggleGroupItem value="gainers">급등</ToggleGroupItem>
+          <ToggleGroupItem value="losers">급락</ToggleGroupItem>
+        </ToggleGroup>
 
         <ToggleGroup type="single" value={market} onValueChange={handleMarketChange}>
           <ToggleGroupItem value="all">전체</ToggleGroupItem>
