@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { MarketIndex } from "@/lib/types";
+import { isAnyMarketOpen } from "@/lib/market-hours";
 
 export function useQuotes(symbols: string[]) {
   return useQuery<MarketIndex[]>({
@@ -11,7 +12,8 @@ export function useQuotes(symbols: string[]) {
       const data = await res.json();
       return Array.isArray(data) ? data : [];
     },
-    staleTime: 5 * 60 * 1000,  // 금융 데이터 5분 캐시
+    staleTime: 5 * 60 * 1000,
     enabled: symbols.length > 0,
+    refetchInterval: isAnyMarketOpen() ? 30_000 : false,
   });
 }

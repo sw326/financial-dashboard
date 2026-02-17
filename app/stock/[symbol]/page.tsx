@@ -14,6 +14,8 @@ import type { StockQuote } from "@/lib/types";
 import { useQuotes } from "@/hooks/use-quotes";
 import { useChart } from "@/hooks/use-chart";
 import { useSummary, type StockSummary } from "@/hooks/use-summary";
+import { useRealtime } from "@/hooks/use-realtime";
+import { isKrMarketOpen, isUsMarketOpen } from "@/lib/market-hours";
 import { LightweightChart, MA_COLORS } from "@/components/lightweight-chart";
 
 const MINUTE_OPTIONS = [
@@ -85,6 +87,10 @@ function StockDetailContent({ symbol }: { symbol: string }) {
   const { data: quoteData = [], isLoading: quoteLoading, error: quoteError } = useQuotes([symbol]);
   const { data: chartData = [], isLoading: chartLoading } = useChart(symbol, period);
   const { data: summary, isLoading: summaryLoading } = useSummary(symbol);
+  const { data: realtime } = useRealtime(symbol);
+
+  const isKr = symbol.endsWith(".KS") || symbol.endsWith(".KQ");
+  const isMarketOpen = isKr ? isKrMarketOpen() : isUsMarketOpen();
 
   const toggleMA = (p: number) => {
     setMaLines((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
@@ -126,7 +132,10 @@ function StockDetailContent({ symbol }: { symbol: string }) {
         <CardHeader className="flex-row items-start justify-between space-y-0">
           <div className="space-y-2">
             <CardDescription>{quote.symbol}</CardDescription>
-            <CardTitle className="text-3xl font-semibold tabular-nums">{fmt(quote.price)}</CardTitle>
+            <CardTitle className="text-3xl font-semibold tabular-nums">
+              {fmt(realtime?.price ?? quote.price)}
+              {isMarketOpen && <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse ml-2 align-middle" />}
+            </CardTitle>
             <div className="text-lg font-medium">{quote.name}</div>
           </div>
           <CardAction>
@@ -212,7 +221,7 @@ function StockDetailContent({ symbol }: { symbol: string }) {
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-b-lg">
               <div className="h-[450px] md:h-[600px]">
-                <LightweightChart data={chartData} loading={chartLoading} chartType={chartType} maLines={maLines} />
+                <LightweightChart data={chartData} loading={chartLoading} chartType={chartType} maLines={maLines} realtimePrice={realtime ? { price: realtime.price, time: realtime.time } : undefined} />
               </div>
             </CardContent>
           </Card>

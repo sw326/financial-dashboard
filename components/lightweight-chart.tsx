@@ -27,6 +27,7 @@ interface LightweightChartProps {
   loading?: boolean;
   chartType?: "candle" | "line" | "area";
   maLines?: number[];
+  realtimePrice?: { price: number; time: number };
 }
 
 export const MA_COLORS: Record<number, string> = {
@@ -47,9 +48,11 @@ function calculateMA(data: ChartData[], period: number) {
     .filter((item): item is { time: UTCTimestamp; value: number } => item !== null);
 }
 
-function LightweightChartInner({ data, loading, chartType = "candle", maLines }: LightweightChartProps) {
+function LightweightChartInner({ data, loading, chartType = "candle", maLines, realtimePrice }: LightweightChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mainSeriesRef = useRef<any>(null);
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -105,6 +108,7 @@ function LightweightChartInner({ data, loading, chartType = "candle", maLines }:
           close: d.close,
         }))
       );
+      mainSeriesRef.current = candleSeries;
     } else if (chartType === "line") {
       const isUp = data[data.length - 1].close >= data[0].close;
       const lineColor = isUp ? "#ef4444" : "#3b82f6";
@@ -119,6 +123,7 @@ function LightweightChartInner({ data, loading, chartType = "candle", maLines }:
           value: d.close,
         }))
       );
+      mainSeriesRef.current = lineSeries;
     } else if (chartType === "area") {
       const isUp = data[data.length - 1].close >= data[0].close;
       const areaSeries = chart.addSeries(AreaSeries, {
@@ -134,6 +139,7 @@ function LightweightChartInner({ data, loading, chartType = "candle", maLines }:
           value: d.close,
         }))
       );
+      mainSeriesRef.current = areaSeries;
     }
 
     // 이동평균선 추가
@@ -198,6 +204,28 @@ function LightweightChartInner({ data, loading, chartType = "candle", maLines }:
       }
     };
   }, [data, isDark, chartType, maLines]);
+
+  // 실시간 가격 업데이트
+  useEffect(() => {
+    if (!realtimePrice || !mainSeriesRef.current) return;
+    const { price, time } = realtimePrice;
+    const t = time as UTCTimestamp;
+
+    if (chartType === "candle") {
+      const last = data[data.length - 1];
+      if (last) {
+        mainSeriesRef.current.update({
+          time: t,
+          open: last.open,
+          high: Math.max(last.high, price),
+          low: Math.min(last.low, price),
+          close: price,
+        });
+      }
+    } else {
+      mainSeriesRef.current.update({ time: t, value: price });
+    }
+  }, [realtimePrice, chartType, data]);
 
   if (loading) {
     return (
