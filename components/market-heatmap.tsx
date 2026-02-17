@@ -233,20 +233,13 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
 
   const handleStockMouseEnter = useCallback((stock: HeatmapStock, e: React.MouseEvent) => {
     clearLeaveTimer();
-    updatePopoverPos(e);
-    setHoveredSector(stock.sector || stock.market || null);
-  }, [clearLeaveTimer, updatePopoverPos]);
-
-  const handleStockMouseMove = useCallback((stock: HeatmapStock, e: React.MouseEvent) => {
     const sec = stock.sector || stock.market || null;
-    if (sec === hoveredSector) {
-      updatePopoverPos(e);
-    } else {
-      clearLeaveTimer();
+    // 같은 섹터면 카드 위치 유지 (이동 안 함)
+    if (sec !== hoveredSector) {
       updatePopoverPos(e);
       setHoveredSector(sec);
     }
-  }, [hoveredSector, clearLeaveTimer, updatePopoverPos]);
+  }, [clearLeaveTimer, updatePopoverPos, hoveredSector]);
 
   const handleStockMouseLeave = useCallback(() => {
     scheduleHide();
@@ -480,7 +473,6 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
               key={rect.stock.symbol}
               onClick={() => handleNavigate(rect.stock.symbol)}
               onMouseEnter={(e) => handleStockMouseEnter(rect.stock, e)}
-              onMouseMove={(e) => handleStockMouseMove(rect.stock, e)}
               onMouseLeave={handleStockMouseLeave}
               className="absolute cursor-pointer flex flex-col items-center justify-center overflow-hidden border border-black/30 dark:border-black/50 transition-all"
               style={{
