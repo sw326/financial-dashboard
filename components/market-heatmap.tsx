@@ -6,23 +6,32 @@ import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, TrendingDown } from "lucide-react";
 
-// 미국장 컨벤션: 초록=상승, 빨강=하락
+// finviz 스타일 색상: 초록=상승, 빨강=하락, 회색=보합
 function getHeatmapColor(pct: number): string {
-  if (pct >= 3) return "#15803d";
-  if (pct >= 2) return "#16a34a";
-  if (pct >= 1) return "#22c55e";
-  if (pct >= 0.5) return "#4ade80";
-  if (pct > 0) return "#86efac";
-  if (pct === 0) return "#6b7280";
-  if (pct > -0.5) return "#fca5a5";
-  if (pct > -1) return "#f87171";
-  if (pct > -2) return "#ef4444";
-  if (pct > -3) return "#dc2626";
-  return "#b91c1c";
+  if (pct >= 3) return "#2d8c3c";   // bright green
+  if (pct >= 2) return "#245f30";   // medium green
+  if (pct >= 1) return "#1e3a28";   // dark muted green
+  if (pct > 0) return "#2a3a2e";    // very dark green tint
+  if (pct === 0) return "#2a2a2e";  // charcoal gray
+  if (pct > -1) return "#3a2a2a";   // very dark red tint
+  if (pct > -2) return "#4a2028";   // dark muted red
+  if (pct > -3) return "#6b2030";   // medium red
+  return "#8b1a2b";                  // deep crimson
 }
 
-function getTextColor(pct: number): string {
-  return Math.abs(pct) >= 0.5 ? "#ffffff" : "#e5e7eb";
+// 색상 범례용 (정확한 단계별 색상)
+const LEGEND_COLORS = [
+  { label: "-3%", color: "#8b1a2b" },
+  { label: "-2%", color: "#6b2030" },
+  { label: "-1%", color: "#4a2028" },
+  { label: "0%", color: "#2a2a2e" },
+  { label: "+1%", color: "#1e3a28" },
+  { label: "+2%", color: "#245f30" },
+  { label: "+3%", color: "#2d8c3c" },
+];
+
+function getTextColor(): string {
+  return "#ffffff";
 }
 
 const fmtKrw = (v: number) => {
@@ -228,7 +237,7 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
         {rects.map((rect) => {
           const pct = rect.stock.changePercent;
           const bg = getHeatmapColor(pct);
-          const txtColor = getTextColor(pct);
+          const txtColor = getTextColor();
           const area = rect.w * rect.h;
           const isHovered = hoveredStock?.symbol === rect.stock.symbol;
 
@@ -287,18 +296,40 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
               }}
             >
               {showName && (
-                <span className={`${nameFontSize} font-bold leading-tight overflow-hidden whitespace-nowrap max-w-[95%]`} style={{ textOverflow: "clip" }}>
+                <span
+                  className={`${nameFontSize} font-bold leading-tight overflow-hidden whitespace-nowrap max-w-[95%]`}
+                  style={{ textOverflow: "clip", textShadow: "1px 1px 2px rgba(0,0,0,0.6), 0 0 4px rgba(0,0,0,0.3)" }}
+                >
                   {displayName}
                 </span>
               )}
               {showPercent && (
-                <span className={`${pctFontSize!} tabular-nums font-semibold leading-tight opacity-90 whitespace-nowrap`}>
+                <span
+                  className={`${pctFontSize!} tabular-nums font-semibold leading-tight whitespace-nowrap`}
+                  style={{ textShadow: "1px 1px 2px rgba(0,0,0,0.6), 0 0 4px rgba(0,0,0,0.3)" }}
+                >
                   {pct >= 0 ? "+" : ""}{pct.toFixed(2)}%
                 </span>
               )}
             </div>
           );
         })}
+      </div>
+
+      {/* 색상 범례 */}
+      <div className="flex items-center justify-center gap-0 mt-2">
+        {LEGEND_COLORS.map((item) => (
+          <div
+            key={item.label}
+            className="flex items-center justify-center px-3 py-1 text-xs font-medium text-white tabular-nums"
+            style={{
+              backgroundColor: item.color,
+              textShadow: "1px 1px 1px rgba(0,0,0,0.5)",
+            }}
+          >
+            {item.label}
+          </div>
+        ))}
       </div>
 
       {/* 호버 팝오버 */}
