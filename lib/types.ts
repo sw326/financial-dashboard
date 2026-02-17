@@ -48,6 +48,7 @@ export interface MarketIndex {
   price: number;
   change: number;
   changePercent: number;
+  marketCap?: number;
 }
 
 export interface StockQuote {

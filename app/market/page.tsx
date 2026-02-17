@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Badge } from "@/components/ui/badge";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, TrendingUp, TrendingDown } from "lucide-react";
 import { useQuotes } from "@/hooks/use-quotes";
 import { useTrending } from "@/hooks/use-trending";
 import StockList from "@/components/stock-list";
-import type { MarketIndex } from "@/lib/types";
+import MarketHeatmap from "@/components/market-heatmap";
+import { useRouter } from "next/navigation";
 
 const INDICES = [
   { symbol: "^KS11", name: "코스피" },
@@ -20,50 +20,8 @@ const INDICES = [
   { symbol: "^DJI", name: "다우존스" },
 ];
 
-// 지수 띠 컴포넌트 - 4개씩 순환
-function IndexTicker({ indices }: { indices: MarketIndex[] }) {
-  const [offset, setOffset] = useState(0);
-  const itemsPerView = 4;
-
-  useEffect(() => {
-    if (indices.length === 0) return;
-    const timer = setInterval(() => {
-      setOffset((prev) => (prev + itemsPerView) % indices.length);
-    }, 2000);
-    return () => clearInterval(timer);
-  }, [indices.length]);
-
-  const color = (v: number) => (v >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]");
-  const sign = (v: number) => (v >= 0 ? "+" : "");
-
-  // 현재 보여줄 4개
-  const visible: MarketIndex[] = [];
-  for (let i = 0; i < itemsPerView && i < indices.length; i++) {
-    visible.push(indices[(offset + i) % indices.length]);
-  }
-
-  return (
-    <div className="flex gap-4 items-center overflow-hidden">
-      {visible.map((idx) => (
-        <div
-          key={idx.symbol}
-          className="flex items-center gap-2 shrink-0 transition-all duration-500"
-        >
-          <span className="text-sm text-muted-foreground">{idx.name}</span>
-          <span className="text-sm font-semibold tabular-nums">
-            {idx.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-          </span>
-          <Badge variant="outline" className={`text-xs ${color(idx.changePercent)}`}>
-            {sign(idx.changePercent)}
-            {idx.changePercent.toFixed(2)}%
-          </Badge>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export default function MarketPage() {
+  const router = useRouter();
   const [tab, setTab] = useState("hot");
   const [market, setMarket] = useState("all");
   const [krMarket, setKrMarket] = useState("all");
@@ -81,32 +39,16 @@ export default function MarketPage() {
     });
   }, [indicesData]);
 
-  // 종목 리스트 조회 (국장은 krMarket 서브필터 전달)
+  // 종목 리스트 조회
   const effectiveMarket = market === "kr" ? `kr:${krMarket}` : market;
   const { data: response, isLoading: stocksLoading } = useTrending(tab, effectiveMarket, page, 20);
   const stocks = response?.stocks || [];
   const total = response?.total || 0;
   const totalPages = Math.ceil(total / 20);
 
-  // 탭/마켓 변경 핸들러 - 페이지 1로 리셋
   const handleTabChange = (value: string) => {
     setTab(value);
     setPage(1);
-  };
-
-  const handleMarketChange = (value: string) => {
-    if (value) {
-      setMarket(value);
-      setKrMarket("all");
-      setPage(1);
-    }
-  };
-
-  const handleKrMarketChange = (value: string) => {
-    if (value) {
-      setKrMarket(value);
-      setPage(1);
-    }
   };
 
   return (
@@ -116,18 +58,45 @@ export default function MarketPage() {
         증시
       </h1>
 
-      {/* 주요 지수 띠 - 4개씩 순환 */}
-      <div className="border-b pb-2">
-        {indicesLoading ? (
-          <div className="flex gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-8 w-32 shrink-0" />
-            ))}
-          </div>
-        ) : (
-          <IndexTicker indices={indices} />
-        )}
+      {/* 지수 카드 그리드 */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {indicesLoading
+          ? Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 rounded-xl" />
+            ))
+          : indices.map((idx) => {
+              const isUp = idx.changePercent >= 0;
+              return (
+                <Card
+                  key={idx.symbol}
+                  className="cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => router.push(`/stock/${encodeURIComponent(idx.symbol)}`)}
+                >
+                  <CardContent className="p-3 space-y-1">
+                    <div className="text-sm text-muted-foreground font-medium">{idx.name}</div>
+                    <div className="text-lg font-bold tabular-nums">
+                      {idx.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </div>
+                    <div className={cn("flex items-center gap-1 text-sm tabular-nums", isUp ? "text-[var(--color-up)]" : "text-[var(--color-down)]")}>
+                      {isUp ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
+                      <span>{isUp ? "+" : ""}{idx.change.toFixed(2)}</span>
+                      <span>({isUp ? "+" : ""}{idx.changePercent.toFixed(2)}%)</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
       </div>
+
+      {/* 시장 히트맵 */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">시장 히트맵</CardTitle>
+        </CardHeader>
+        <CardContent className="p-3 pt-0">
+          <MarketHeatmap />
+        </CardContent>
+      </Card>
 
       {/* 탭 + 마켓 필터 */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
@@ -174,7 +143,6 @@ export default function MarketPage() {
           ))}
         </div>
 
-        {/* 국장 서브필터: 코스피/코스닥 */}
         {market === "kr" && (
           <div className="flex gap-1 bg-muted rounded-lg p-1">
             {[
@@ -211,7 +179,6 @@ export default function MarketPage() {
           <StockList stocks={stocks} />
         )}
 
-        {/* 페이지네이션 */}
         {!stocksLoading && totalPages > 1 && (
           <div className="flex justify-center gap-2 mt-4">
             <Button
