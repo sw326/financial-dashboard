@@ -4,7 +4,6 @@ import { useMemo, useState, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp, TrendingDown } from "lucide-react";
 
 function getHeatmapColor(pct: number): string {
   if (pct >= 3) return "#2d8c3c";
@@ -38,6 +37,11 @@ const fmtKrw = (v: number) => {
   if (v >= 1e6) return (v / 1e6).toFixed(1) + "M";
   if (v >= 1e3) return (v / 1e3).toFixed(1) + "K";
   return v.toFixed(0);
+};
+
+const fmtPrice = (v: number, isKR: boolean) => {
+  if (isKR) return v.toLocaleString();
+  return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
 };
 
 interface HeatmapStock {
@@ -111,45 +115,59 @@ interface SectorGroup extends WeightedItem {
   totalMcap: number;
 }
 
-function HoverCard({
-  stock,
+// Sector hover card - shows list of stocks in that sector
+function SectorHoverCard({
+  sectorName,
+  stocks,
   position,
   onNavigate,
 }: {
-  stock: HeatmapStock;
+  sectorName: string;
+  stocks: HeatmapStock[];
   position: { x: number; y: number };
   onNavigate: (symbol: string) => void;
 }) {
-  const isUp = stock.changePercent >= 0;
-  const isKR = stock.symbol.endsWith(".KS") || stock.symbol.endsWith(".KQ");
+  const sorted = [...stocks].sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+  const display = sorted.slice(0, 15);
+  const remaining = sorted.length - display.length;
 
   return (
     <div
-      className="fixed z-50 pointer-events-auto bg-popover border border-border rounded-lg shadow-xl p-3 min-w-[200px] max-w-[260px]"
+      className="fixed z-50 pointer-events-auto bg-popover border border-border rounded-lg shadow-xl p-3 min-w-[260px] max-w-[340px]"
       style={{ left: position.x, top: position.y }}
-      onClick={(e) => { e.stopPropagation(); onNavigate(stock.symbol); }}
     >
-      <div className="cursor-pointer hover:opacity-80 transition-opacity">
-        <div className="flex items-center justify-between gap-2 mb-1.5">
-          <span className="font-semibold text-sm text-foreground truncate">{stock.name}</span>
-          <span className="text-xs text-muted-foreground shrink-0">{stock.symbol}</span>
-        </div>
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-lg font-bold tabular-nums text-foreground">
-            {isKR ? stock.price.toLocaleString() : stock.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-          </span>
-          <div className={`flex items-center gap-1 text-sm font-semibold ${isUp ? "text-green-500" : "text-red-500"}`}>
-            {isUp ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
-            <span className="tabular-nums">{isUp ? "+" : ""}{stock.changePercent.toFixed(2)}%</span>
-          </div>
-        </div>
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>시총 {fmtKrw(stock.marketCap)}</span>
-          <span className="px-1.5 py-0.5 rounded bg-muted text-[10px]">
-            {stock.sector || stock.market}
-          </span>
-        </div>
+      <div className="font-semibold text-sm text-foreground mb-2 pb-1.5 border-b border-border">
+        {sectorName}
+        <span className="text-xs text-muted-foreground ml-2">({stocks.length}종목)</span>
       </div>
+      <div className="space-y-0.5 max-h-[320px] overflow-y-auto">
+        {display.map((stock) => {
+          const isKR = stock.symbol.endsWith(".KS") || stock.symbol.endsWith(".KQ");
+          const isUp = stock.changePercent >= 0;
+          return (
+            <div
+              key={stock.symbol}
+              className="flex items-center justify-between gap-2 py-0.5 px-1 rounded hover:bg-muted/50 cursor-pointer text-xs"
+              onClick={(e) => { e.stopPropagation(); onNavigate(stock.symbol); }}
+            >
+              <span className="truncate text-foreground font-medium flex-1 min-w-0">
+                {stock.name}
+              </span>
+              <span className="tabular-nums text-muted-foreground shrink-0">
+                {fmtPrice(stock.price, isKR)}
+              </span>
+              <span className={`tabular-nums font-semibold shrink-0 w-[52px] text-right ${isUp ? "text-red-500" : "text-blue-500"}`}>
+                {isUp ? "+" : ""}{stock.changePercent.toFixed(2)}%
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      {remaining > 0 && (
+        <div className="text-[10px] text-muted-foreground mt-1.5 text-center">
+          외 {remaining}개
+        </div>
+      )}
     </div>
   );
 }
@@ -168,7 +186,7 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
   const stocks = response?.stocks || [];
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const [hoveredStock, setHoveredStock] = useState<HeatmapStock | null>(null);
+  const [hoveredSector, setHoveredSector] = useState<string | null>(null);
   const [popoverPos, setPopoverPos] = useState({ x: 0, y: 0 });
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -177,25 +195,36 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const viewportW = window.innerWidth;
     const viewportH = window.innerHeight;
-    const popoverW = 240;
-    const popoverH = 120;
+    const popoverW = 320;
+    const popoverH = 300;
     let x = rect.right + 8;
     let y = rect.top;
     if (x + popoverW > viewportW - 16) x = rect.left - popoverW - 8;
     if (y + popoverH > viewportH - 16) y = viewportH - popoverH - 16;
     if (y < 16) y = 16;
     setPopoverPos({ x, y });
-    setHoveredStock(stock);
+    setHoveredSector(stock.sector || stock.market || null);
   }, []);
 
   const handleMouseLeave = useCallback(() => {
-    hoverTimeoutRef.current = setTimeout(() => setHoveredStock(null), 150);
+    hoverTimeoutRef.current = setTimeout(() => setHoveredSector(null), 150);
   }, []);
 
   const handleNavigate = useCallback((symbol: string) => {
-    setHoveredStock(null);
+    setHoveredSector(null);
     router.push(`/stock/${encodeURIComponent(symbol)}`);
   }, [router]);
+
+  // Build sector → stock map for hover card
+  const sectorStocksMap = useMemo(() => {
+    const map = new Map<string, HeatmapStock[]>();
+    for (const s of stocks) {
+      const sec = s.sector || s.market || "기타";
+      if (!map.has(sec)) map.set(sec, []);
+      map.get(sec)!.push(s);
+    }
+    return map;
+  }, [stocks]);
 
   // Build nested sector → stock treemap
   const { sectorRects, stockRects } = useMemo(() => {
@@ -250,18 +279,24 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
     // Level 1: sector layout
     const sectorLayout = squarify(sectorGroups, 0, 0, 100, 100);
 
+    const SECTOR_PAD = 0.2; // 0.2% padding on each side for sector gaps
     const finalSectorRects: { x: number; y: number; w: number; h: number; name: string }[] = [];
     const finalStockRects: { x: number; y: number; w: number; h: number; stock: HeatmapStock & { weight: number } }[] = [];
 
     for (const sr of sectorLayout) {
       const sg = sr.item;
-      finalSectorRects.push({ x: sr.x, y: sr.y, w: sr.w, h: sr.h, name: sg.name });
+      // Inset sector rect for visual gap between sectors
+      const px = sr.x + SECTOR_PAD;
+      const py = sr.y + SECTOR_PAD;
+      const pw = sr.w - SECTOR_PAD * 2;
+      const ph = sr.h - SECTOR_PAD * 2;
 
-      // Level 2: stocks within sector
-      // Normalize weights within sector
+      finalSectorRects.push({ x: px, y: py, w: pw, h: ph, name: sg.name });
+
+      // Level 2: stocks within padded sector area
       const sectorTotal = sg.stocks.reduce((s, st) => s + st.weight, 0);
       const normalized = sg.stocks.map((s) => ({ ...s, weight: s.weight / sectorTotal }));
-      const stockLayout = squarify(normalized, sr.x, sr.y, sr.w, sr.h);
+      const stockLayout = squarify(normalized, px, py, pw, ph);
 
       for (const stk of stockLayout) {
         finalStockRects.push({
@@ -279,21 +314,27 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
 
   return (
     <>
-      <div ref={containerRef} className="relative w-full" style={{ aspectRatio: "16/9" }}>
+      <div ref={containerRef} className="relative w-full bg-zinc-900" style={{ aspectRatio: "16/9" }}>
         {/* Sector borders & labels */}
         {sectorRects.map((sr) => {
           const area = sr.w * sr.h;
           const showLabel = area > 15;
+          const isHovered = hoveredSector === sr.name;
           return (
             <div
               key={`sector-${sr.name}`}
-              className="absolute pointer-events-none border-2 border-zinc-700/80 dark:border-zinc-600/80"
+              className={`absolute border-2 transition-colors duration-150 ${
+                isHovered
+                  ? "border-amber-400/90 dark:border-amber-400/80"
+                  : "border-zinc-700/80 dark:border-zinc-600/60"
+              }`}
               style={{
                 left: `${sr.x}%`,
                 top: `${sr.y}%`,
                 width: `${sr.w}%`,
                 height: `${sr.h}%`,
                 zIndex: 20,
+                pointerEvents: "none",
               }}
             >
               {showLabel && (
@@ -319,7 +360,7 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
           const bg = getHeatmapColor(pct);
           const txtColor = getTextColor();
           const area = rect.w * rect.h;
-          const isHovered = hoveredStock?.symbol === rect.stock.symbol;
+          const isSectorHovered = hoveredSector === (rect.stock.sector || rect.stock.market);
 
           const isUS = !rect.stock.symbol.endsWith(".KS") && !rect.stock.symbol.endsWith(".KQ");
           const displayName = isUS
@@ -369,8 +410,8 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
                 height: `${rect.h}%`,
                 backgroundColor: bg,
                 color: txtColor,
-                filter: isHovered ? "brightness(1.3)" : undefined,
-                zIndex: isHovered ? 10 : undefined,
+                filter: isSectorHovered ? "brightness(1.15)" : undefined,
+                zIndex: isSectorHovered ? 10 : undefined,
               }}
             >
               {showName && (
@@ -410,9 +451,10 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
         ))}
       </div>
 
-      {hoveredStock && (
-        <HoverCard
-          stock={hoveredStock}
+      {hoveredSector && sectorStocksMap.has(hoveredSector) && (
+        <SectorHoverCard
+          sectorName={hoveredSector}
+          stocks={sectorStocksMap.get(hoveredSector)!}
           position={popoverPos}
           onNavigate={handleNavigate}
         />

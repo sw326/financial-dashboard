@@ -83,10 +83,10 @@ async function buildSectorMap(): Promise<Map<string, string>> {
 
 // 네이버 API에서 코스피 시총 상위 200개
 async function fetchKrStocks(): Promise<HeatmapStock[]> {
-  // 시총 200개와 섹터 매핑을 병렬로 가져옴
+  // 시총 100개와 섹터 매핑을 병렬로 가져옴
   const [stockPages, sectorMap] = await Promise.all([
     Promise.all(
-      [1, 2].map(async (page) => {
+      [1].map(async (page) => {
         try {
           const res = await fetch(
             `${NAVER_API}/marketValue?page=${page}&pageSize=100`,
@@ -110,11 +110,6 @@ async function fetchKrStocks(): Promise<HeatmapStock[]> {
   const results: HeatmapStock[] = [];
   for (const stocks of stockPages) {
     for (const s of stocks) {
-      const isFalling =
-        s.compareToPreviousPrice?.name === "FALLING" ||
-        s.compareToPreviousPrice?.name === "LOWER_LIMIT" ||
-        s.compareToPreviousPrice?.code === "5" ||
-        s.compareToPreviousPrice?.code === "2";
       const pct = parseFloat(s.fluctuationsRatio || "0");
 
       let mcap = 0;
@@ -131,7 +126,7 @@ async function fetchKrStocks(): Promise<HeatmapStock[]> {
         symbol: `${code}.${s.stockExchangeType?.name === "KOSDAQ" ? "KQ" : "KS"}`,
         name: s.stockName,
         price: Number((s.closePrice || "0").replace(/,/g, "")) || 0,
-        changePercent: isFalling ? -Math.abs(pct) : pct,
+        changePercent: pct,
         marketCap: mcap,
         market: s.stockExchangeType?.name === "KOSDAQ" ? "KOSDAQ" : "KOSPI",
         sector,
