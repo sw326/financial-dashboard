@@ -218,28 +218,46 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
     leaveTimerRef.current = setTimeout(() => setHoveredSector(null), 350);
   }, []);
 
-  // 커서 위치 업데이트 (카드가 마우스를 따라감)
-  const updatePopoverPos = useCallback((e: React.MouseEvent) => {
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
+  // 섹터 경계 기반으로 카드 위치 계산 (섹터 바로 옆에 붙임)
+  const sectorRectsRef = useRef<{ x: number; y: number; w: number; h: number; name: string }[]>([]);
+  const positionCardBySector = useCallback((sectorName: string) => {
+    if (!containerRef.current) return;
+    const sr = sectorRectsRef.current.find((r) => r.name === sectorName);
+    if (!sr) return;
+
+    const containerRect = containerRef.current.getBoundingClientRect();
     const pw = 340;
     const ph = 420;
-    const cx = e.clientX + 8;
-    const cy = e.clientY + 8;
-    const finalX = cx + pw > vw - 16 ? e.clientX - pw - 8 : cx;
-    const finalY = cy + ph > vh - 16 ? Math.max(16, vh - ph - 16) : cy;
-    setPopoverPos({ x: Math.max(16, finalX), y: Math.max(16, finalY) });
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // 섹터의 화면 좌표
+    const sectorLeft = containerRect.left + (sr.x / 100) * containerRect.width;
+    const sectorRight = sectorLeft + (sr.w / 100) * containerRect.width;
+    const sectorTop = containerRect.top + (sr.y / 100) * containerRect.height;
+    const sectorMidY = sectorTop + ((sr.h / 100) * containerRect.height) / 2;
+
+    // 카드를 섹터 우측에 배치, 넘치면 좌측에
+    let x = sectorRight + 4;
+    if (x + pw > vw - 16) x = sectorLeft - pw - 4;
+    if (x < 16) x = 16;
+
+    // Y는 섹터 중앙 기준, 화면 밖이면 조정
+    let y = sectorMidY - ph / 2;
+    if (y + ph > vh - 16) y = vh - ph - 16;
+    if (y < 16) y = 16;
+
+    setPopoverPos({ x, y });
   }, []);
 
   const handleStockMouseEnter = useCallback((stock: HeatmapStock, e: React.MouseEvent) => {
     clearLeaveTimer();
     const sec = stock.sector || stock.market || null;
-    // 같은 섹터면 카드 위치 유지 (이동 안 함)
     if (sec !== hoveredSector) {
-      updatePopoverPos(e);
+      if (sec) positionCardBySector(sec);
       setHoveredSector(sec);
     }
-  }, [clearLeaveTimer, updatePopoverPos, hoveredSector]);
+  }, [clearLeaveTimer, positionCardBySector, hoveredSector]);
 
   const handleStockMouseLeave = useCallback(() => {
     scheduleHide();
@@ -248,8 +266,9 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
   // 섹터 헤더 hover 핸들러
   const handleSectorHeaderEnter = useCallback((sectorName: string) => {
     clearLeaveTimer();
+    positionCardBySector(sectorName);
     setHoveredSector(sectorName);
-  }, [clearLeaveTimer]);
+  }, [clearLeaveTimer, positionCardBySector]);
 
   const handleSectorHeaderLeave = useCallback(() => {
     scheduleHide();
@@ -358,6 +377,9 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
 
     return { sectorRects: finalSectorRects, stockRects: finalStockRects };
   }, [stocks]);
+
+  // sync ref for callbacks
+  sectorRectsRef.current = sectorRects;
 
   if (isLoading) return <Skeleton className="h-[350px] w-full rounded-lg" />;
   if (stockRects.length === 0) return null;
