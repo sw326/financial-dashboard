@@ -58,16 +58,18 @@ export async function GET(request: NextRequest) {
     const endpoint = TAB_ENDPOINT[tab] || "marketValue";
 
     // Determine which markets to fetch
-    const sosokList: number[] = [];
-    if (market === "kospi" || market === "all") sosokList.push(0);
-    if (market === "kosdaq" || market === "all") sosokList.push(1);
+    // Naver API uses path suffix: /up, /up/KOSDAQ, /up/KOSPI
+    const marketSuffixes: string[] = [];
+    if (market === "kospi") marketSuffixes.push("/KOSPI");
+    else if (market === "kosdaq") marketSuffixes.push("/KOSDAQ");
+    else marketSuffixes.push(""); // "all" = default (includes both, no dedup needed since API returns mixed)
 
     // For volume tab, fetch more to sort properly
     const fetchSize = tab === "volume" ? 100 : size;
     const fetchPage = tab === "volume" ? 1 : page;
 
-    const fetches = sosokList.map(async (sosok) => {
-      const url = `${NAVER_API}/${endpoint}?sosok=${sosok}&page=${fetchPage}&pageSize=${fetchSize}`;
+    const fetches = marketSuffixes.map(async (suffix) => {
+      const url = `${NAVER_API}/${endpoint}${suffix}?page=${fetchPage}&pageSize=${fetchSize}`;
       const res = await fetch(url, {
         headers: { "User-Agent": "Mozilla/5.0" },
         next: { revalidate: 60 }, // cache 1 min

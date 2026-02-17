@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { cn } from "@/lib/utils";
 import { BarChart3 } from "lucide-react";
 import { useQuotes } from "@/hooks/use-quotes";
 import { useTrending } from "@/hooks/use-trending";
@@ -130,26 +131,71 @@ export default function MarketPage() {
 
       {/* 탭 + 마켓 필터 */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-        <ToggleGroup type="single" value={tab} onValueChange={(v) => v && handleTabChange(v)} className="flex-1">
-          <ToggleGroupItem value="hot">인기종목</ToggleGroupItem>
-          <ToggleGroupItem value="volume">거래량 TOP</ToggleGroupItem>
-          <ToggleGroupItem value="gainers">급등</ToggleGroupItem>
-          <ToggleGroupItem value="losers">급락</ToggleGroupItem>
-        </ToggleGroup>
+        <div className="flex gap-1 bg-muted rounded-lg p-1 flex-1">
+          {[
+            { value: "hot", label: "인기종목" },
+            { value: "volume", label: "거래량 TOP" },
+            { value: "gainers", label: "급등" },
+            { value: "losers", label: "급락" },
+          ].map((t) => (
+            <Button
+              key={t.value}
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "rounded-md text-sm",
+                tab === t.value && "bg-background shadow-sm"
+              )}
+              onClick={() => handleTabChange(t.value)}
+            >
+              {t.label}
+            </Button>
+          ))}
+        </div>
 
-        <ToggleGroup type="single" value={market} onValueChange={handleMarketChange}>
-          <ToggleGroupItem value="all">전체</ToggleGroupItem>
-          <ToggleGroupItem value="kr">국장</ToggleGroupItem>
-          <ToggleGroupItem value="us">미장</ToggleGroupItem>
-        </ToggleGroup>
+        <div className="flex gap-1 bg-muted rounded-lg p-1">
+          {[
+            { value: "all", label: "전체" },
+            { value: "kr", label: "국장" },
+            { value: "us", label: "미장" },
+          ].map((m) => (
+            <Button
+              key={m.value}
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "rounded-md text-sm",
+                market === m.value && "bg-background shadow-sm"
+              )}
+              onClick={() => { setMarket(m.value); setKrMarket("all"); setPage(1); }}
+            >
+              {m.label}
+            </Button>
+          ))}
+        </div>
 
         {/* 국장 서브필터: 코스피/코스닥 */}
         {market === "kr" && (
-          <ToggleGroup type="single" value={krMarket} onValueChange={handleKrMarketChange}>
-            <ToggleGroupItem value="all">전체</ToggleGroupItem>
-            <ToggleGroupItem value="kospi">코스피</ToggleGroupItem>
-            <ToggleGroupItem value="kosdaq">코스닥</ToggleGroupItem>
-          </ToggleGroup>
+          <div className="flex gap-1 bg-muted rounded-lg p-1">
+            {[
+              { value: "all", label: "전체" },
+              { value: "kospi", label: "코스피" },
+              { value: "kosdaq", label: "코스닥" },
+            ].map((m) => (
+              <Button
+                key={m.value}
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "rounded-md text-sm",
+                  krMarket === m.value && "bg-background shadow-sm"
+                )}
+                onClick={() => { setKrMarket(m.value); setPage(1); }}
+              >
+                {m.label}
+              </Button>
+            ))}
+          </div>
         )}
       </div>
 
