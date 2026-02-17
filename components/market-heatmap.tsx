@@ -233,8 +233,8 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
     const cardW = 25;
 
     // 우측 배치 → 안 되면 좌측
-    let x = sr.x + sr.w + 0.3;
-    if (x + cardW > 100) x = sr.x - cardW - 0.3;
+    let x = sr.x + sr.w;
+    if (x + cardW > 100) x = sr.x - cardW;
     if (x < 0) x = 0;
 
     // Y: 섹터 상단에 맞춤
@@ -381,7 +381,7 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
 
   return (
     <>
-      <div ref={containerRef} className="relative w-full bg-zinc-900" style={{ aspectRatio: "16/9" }}>
+      <div ref={containerRef} className="relative w-full bg-zinc-900 overflow-visible" style={{ aspectRatio: "16/9" }}>
 
         {/* ── 섹터 border 프레임 (pointer-events: none) ── */}
         {sectorRects.map((sr) => {
