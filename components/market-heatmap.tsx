@@ -239,8 +239,9 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
   const handleStockMouseEnter = useCallback((stock: HeatmapStock, e: React.MouseEvent) => {
     clearLeaveTimer();
     const sec = stock.sector || stock.market || null;
+    // 항상 위치 업데이트 (같은 섹터라도 커서가 멀리 이동했을 수 있음)
+    positionCardAtCursor(e);
     if (sec !== hoveredSector) {
-      positionCardAtCursor(e);
       setHoveredSector(sec);
     }
   }, [clearLeaveTimer, positionCardAtCursor, hoveredSector]);
