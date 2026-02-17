@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import YahooFinance from "yahoo-finance2";
+import { getKrStockName } from "@/lib/kr-stock-names";
 
 const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
@@ -115,7 +116,7 @@ async function fetchQuotesBatch(symbols: string[]): Promise<StockData[]> {
     .filter((q) => q && q.regularMarketPrice != null)
     .map((q) => ({
       symbol: q.symbol || "",
-      name: q.shortName || q.longName || q.symbol || "",
+      name: getKrStockName(q.symbol || "", q.shortName || q.longName || q.symbol || ""),
       price: q.regularMarketPrice || 0,
       change: q.regularMarketChange || 0,
       changePercent: q.regularMarketChangePercent || 0,

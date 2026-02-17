@@ -18,24 +18,17 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { KR_STOCK_NAMES } from "@/lib/kr-stock-names";
 
-// 미리 정의된 주요 종목 리스트
-const POPULAR_STOCKS = [
-  { symbol: "005930.KS", name: "삼성전자", category: "한국" },
-  { symbol: "000660.KS", name: "SK하이닉스", category: "한국" },
-  { symbol: "035420.KS", name: "NAVER", category: "한국" },
-  { symbol: "035720.KS", name: "카카오", category: "한국" },
-  { symbol: "051910.KS", name: "LG화학", category: "한국" },
-  { symbol: "006400.KS", name: "삼성SDI", category: "한국" },
-  { symbol: "207940.KS", name: "삼성바이오로직스", category: "한국" },
-  { symbol: "068270.KS", name: "셀트리온", category: "한국" },
-  { symbol: "005380.KS", name: "현대차", category: "한국" },
-  { symbol: "000270.KS", name: "기아", category: "한국" },
-  { symbol: "012330.KS", name: "현대모비스", category: "한국" },
-  { symbol: "028260.KS", name: "삼성물산", category: "한국" },
-  { symbol: "105560.KS", name: "KB금융", category: "한국" },
-  { symbol: "055550.KS", name: "신한지주", category: "한국" },
-  { symbol: "017670.KS", name: "SK텔레콤", category: "한국" },
+// 한국 종목: KR_STOCK_NAMES 매핑 테이블에서 자동 생성
+const KR_STOCKS = Object.entries(KR_STOCK_NAMES).map(([symbol, name]) => ({
+  symbol,
+  name,
+  category: "한국",
+}));
+
+// 미국 주요 종목 및 지수 (영문 그대로 유지)
+const OTHER_STOCKS = [
   { symbol: "AAPL", name: "Apple", category: "미국" },
   { symbol: "MSFT", name: "Microsoft", category: "미국" },
   { symbol: "GOOGL", name: "Alphabet", category: "미국" },
@@ -49,6 +42,9 @@ const POPULAR_STOCKS = [
   { symbol: "^IXIC", name: "나스닥", category: "지수" },
   { symbol: "^DJI", name: "다우존스", category: "지수" },
 ];
+
+// 미리 정의된 주요 종목 리스트
+const POPULAR_STOCKS = [...KR_STOCKS, ...OTHER_STOCKS];
 
 export default function SearchCommand() {
   const router = useRouter();
