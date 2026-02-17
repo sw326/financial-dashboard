@@ -51,7 +51,7 @@ export default function RegionDetailPage({
 
 function RegionDetail({ region }: { region: string }) {
   // 카카오 API 키 가져오기 (환경변수)
-  const kakaoKey = process.env.NEXT_PUBLIC_KAKAO_KEY || "";
+  const kakaoKey = process.env.NEXT_PUBLIC_KAKAO_JS_KEY || "";
 
   return (
     <Tabs defaultValue="trend" className="space-y-4">

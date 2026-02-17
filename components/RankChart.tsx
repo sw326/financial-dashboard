@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTheme } from "next-themes";
 import {
   BarChart,
@@ -18,6 +18,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatAmount } from "@/lib/utils";
 import { AptTrade } from "@/lib/types";
+import { AptDetailModal } from "@/components/apt-detail-modal";
 
 function aggregateByApt(trades: AptTrade[]) {
   const map = new Map<string, { sum: number; count: number }>();
@@ -45,6 +46,37 @@ function getBarFill(index: number, total: number, isDark: boolean): string {
   return `rgba(${base},${opacity})`;
 }
 
+// Custom Y axis tick with click handler
+interface CustomTickProps {
+  x?: number;
+  y?: number;
+  payload?: { value: string };
+  textFill: string;
+  onAptClick: (name: string) => void;
+  rankData: ReturnType<typeof aggregateByApt>;
+}
+
+function CustomYAxisTick({ x = 0, y = 0, payload, textFill, onAptClick, rankData }: CustomTickProps) {
+  if (!payload) return null;
+  const item = rankData.find((d) => d.name === payload.value);
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        x={-4}
+        y={0}
+        dy={4}
+        textAnchor="end"
+        fontSize={11}
+        fill="#3b82f6"
+        style={{ cursor: "pointer", textDecoration: "underline" }}
+        onClick={() => item && onAptClick(item.fullName)}
+      >
+        {payload.value}
+      </text>
+    </g>
+  );
+}
+
 export default function RankChart({ region: propRegion }: { region?: string } = {}) {
   const searchParams = useSearchParams();
   const region = propRegion || searchParams.get("region") || "11680";
@@ -55,6 +87,14 @@ export default function RankChart({ region: propRegion }: { region?: string } = 
   const isDark = resolvedTheme === "dark";
   const { trades, loading, error } = useTrades(region, period, area);
   const rankData = useMemo(() => aggregateByApt(trades), [trades]);
+
+  const [selectedApt, setSelectedApt] = useState<string | null>(null);
+
+  // 선택된 아파트의 거래 내역
+  const aptTrades = useMemo(() => {
+    if (!selectedApt) return [];
+    return trades.filter((t) => t.aptName === selectedApt);
+  }, [trades, selectedApt]);
 
   const axisStroke = isDark ? "#888" : "#666";
   const gridStroke = isDark ? "#333" : "#e5e5e5";
@@ -81,46 +121,64 @@ export default function RankChart({ region: propRegion }: { region?: string } = 
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">아파트별 평균 거래가 Top 20</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={Math.max(400, rankData.length * 36)}>
-          <BarChart data={rankData} layout="vertical" margin={{ left: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-            <XAxis type="number" tickFormatter={formatAmount} fontSize={12} stroke={axisStroke} tick={{ fill: textFill }} />
-            <YAxis
-              type="category"
-              dataKey="name"
-              width={120}
-              fontSize={11}
-              stroke={axisStroke}
-              tick={{ fill: textFill }}
-            />
-            <Tooltip
-              formatter={(v) => [formatAmount(Number(v)), "평균 거래가"]}
-              labelFormatter={(label) => {
-                const item = rankData.find((d) => d.name === label);
-                return `${item?.fullName ?? label} (${item?.count ?? 0}건)`;
-              }}
-              contentStyle={{
-                backgroundColor: isDark ? "#1a1a1a" : "#fff",
-                border: `1px solid ${isDark ? "#333" : "#e5e5e5"}`,
-                borderRadius: "8px",
-                color: textFill,
-              }}
-              labelStyle={{ color: textFill }}
-              itemStyle={{ color: textFill }}
-            />
-            <Bar dataKey="avgPrice" name="평균 거래가" radius={[0, 4, 4, 0]} activeBar={false}>
-              {rankData.map((_, i) => (
-                <Cell key={i} fill={getBarFill(i, rankData.length, isDark)} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">아파트별 평균 거래가 Top 20</CardTitle>
+          <p className="text-xs text-muted-foreground">아파트명 클릭 시 상세 거래 내역을 확인할 수 있습니다.</p>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={Math.max(400, rankData.length * 36)}>
+            <BarChart data={rankData} layout="vertical" margin={{ left: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+              <XAxis type="number" tickFormatter={formatAmount} fontSize={12} stroke={axisStroke} tick={{ fill: textFill }} />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={120}
+                fontSize={11}
+                stroke={axisStroke}
+                tick={
+                  <CustomYAxisTick
+                    textFill={textFill}
+                    onAptClick={setSelectedApt}
+                    rankData={rankData}
+                  />
+                }
+              />
+              <Tooltip
+                formatter={(v) => [formatAmount(Number(v)), "평균 거래가"]}
+                labelFormatter={(label) => {
+                  const item = rankData.find((d) => d.name === label);
+                  return `${item?.fullName ?? label} (${item?.count ?? 0}건)`;
+                }}
+                contentStyle={{
+                  backgroundColor: isDark ? "#1a1a1a" : "#fff",
+                  border: `1px solid ${isDark ? "#333" : "#e5e5e5"}`,
+                  borderRadius: "8px",
+                  color: textFill,
+                }}
+                labelStyle={{ color: textFill }}
+                itemStyle={{ color: textFill }}
+              />
+              <Bar dataKey="avgPrice" name="평균 거래가" radius={[0, 4, 4, 0]} activeBar={false}>
+                {rankData.map((_, i) => (
+                  <Cell key={i} fill={getBarFill(i, rankData.length, isDark)} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {selectedApt && (
+        <AptDetailModal
+          open={!!selectedApt}
+          onClose={() => setSelectedApt(null)}
+          aptName={selectedApt}
+          trades={aptTrades}
+        />
+      )}
+    </>
   );
 }

@@ -13,6 +13,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTrades } from "@/hooks/useTrades";
 import { formatAmount } from "@/lib/utils";
+import { AptDetailModal } from "@/components/apt-detail-modal";
 
 type SortKey = "amount" | "date";
 
@@ -25,6 +26,7 @@ export default function TradeTable({ region: propRegion }: { region?: string } =
   const { trades, loading, error } = useTrades(region, "3m", area);
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortAsc, setSortAsc] = useState(false);
+  const [selectedApt, setSelectedApt] = useState<string | null>(null);
 
   const sorted = useMemo(() => {
     const arr = [...trades];
@@ -38,6 +40,12 @@ export default function TradeTable({ region: propRegion }: { region?: string } =
     });
     return arr;
   }, [trades, sortKey, sortAsc]);
+
+  // 선택된 아파트의 전체 거래 내역 (기간 제한 없이 trades 전체에서 필터)
+  const aptTrades = useMemo(() => {
+    if (!selectedApt) return [];
+    return trades.filter((t) => t.aptName === selectedApt);
+  }, [trades, selectedApt]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
@@ -71,54 +79,73 @@ export default function TradeTable({ region: propRegion }: { region?: string } =
   }
 
   return (
-    <div className="bg-card rounded-lg border overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>아파트명</TableHead>
-            <TableHead>법정동</TableHead>
-            <TableHead className="text-right">전용면적(㎡)</TableHead>
-            <TableHead className="text-right">층</TableHead>
-            <TableHead
-              className="text-right cursor-pointer hover:text-foreground"
-              onClick={() => toggleSort("amount")}
-            >
-              거래금액 {sortKey === "amount" ? (sortAsc ? "↑" : "↓") : ""}
-            </TableHead>
-            <TableHead
-              className="text-right cursor-pointer hover:text-foreground"
-              onClick={() => toggleSort("date")}
-            >
-              거래일 {sortKey === "date" ? (sortAsc ? "↑" : "↓") : ""}
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sorted.slice(0, 100).map((t, i) => (
-            <TableRow 
-              key={i} 
-              className="hover:bg-muted/50 cursor-pointer"
-              onClick={() => router.push(`/real-estate/${region}`)}
-            >
-              <TableCell className="font-medium">{t.aptName}</TableCell>
-              <TableCell>{t.dong}</TableCell>
-              <TableCell className="text-right tabular-nums">{t.area.toFixed(1)}</TableCell>
-              <TableCell className="text-right tabular-nums">{t.floor}</TableCell>
-              <TableCell className="text-right font-semibold tabular-nums">
-                {formatAmount(t.dealAmount)}
-              </TableCell>
-              <TableCell className="text-right tabular-nums">
-                {t.dealYear}.{String(t.dealMonth).padStart(2, "0")}.{String(t.dealDay).padStart(2, "0")}
-              </TableCell>
+    <>
+      <div className="bg-card rounded-lg border overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>아파트명</TableHead>
+              <TableHead>법정동</TableHead>
+              <TableHead className="text-right">전용면적(㎡)</TableHead>
+              <TableHead className="text-right">층</TableHead>
+              <TableHead
+                className="text-right cursor-pointer hover:text-foreground"
+                onClick={() => toggleSort("amount")}
+              >
+                거래금액 {sortKey === "amount" ? (sortAsc ? "↑" : "↓") : ""}
+              </TableHead>
+              <TableHead
+                className="text-right cursor-pointer hover:text-foreground"
+                onClick={() => toggleSort("date")}
+              >
+                거래일 {sortKey === "date" ? (sortAsc ? "↑" : "↓") : ""}
+              </TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      {sorted.length > 100 && (
-        <div className="text-center text-sm text-muted-foreground py-3 border-t">
-          총 {sorted.length}건 중 100건 표시
-        </div>
+          </TableHeader>
+          <TableBody>
+            {sorted.slice(0, 100).map((t, i) => (
+              <TableRow
+                key={i}
+                className="hover:bg-muted/50 cursor-pointer"
+                onClick={() => router.push(`/real-estate/${region}`)}
+              >
+                <TableCell
+                  className="font-medium text-primary hover:underline cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedApt(t.aptName);
+                  }}
+                >
+                  {t.aptName}
+                </TableCell>
+                <TableCell>{t.dong}</TableCell>
+                <TableCell className="text-right tabular-nums">{t.area.toFixed(1)}</TableCell>
+                <TableCell className="text-right tabular-nums">{t.floor}</TableCell>
+                <TableCell className="text-right font-semibold tabular-nums">
+                  {formatAmount(t.dealAmount)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {t.dealYear}.{String(t.dealMonth).padStart(2, "0")}.{String(t.dealDay).padStart(2, "0")}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        {sorted.length > 100 && (
+          <div className="text-center text-sm text-muted-foreground py-3 border-t">
+            총 {sorted.length}건 중 100건 표시
+          </div>
+        )}
+      </div>
+
+      {selectedApt && (
+        <AptDetailModal
+          open={!!selectedApt}
+          onClose={() => setSelectedApt(null)}
+          aptName={selectedApt}
+          trades={aptTrades}
+        />
       )}
-    </div>
+    </>
   );
 }
