@@ -75,7 +75,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 }
 
 function StockDetailContent({ symbol }: { symbol: string }) {
-  const [period, setPeriod] = useState("1d");
+  const [period, setPeriod] = useState("1mo");
   const [chartType, setChartType] = useState<"candle" | "line" | "area">("candle");
   const [maLines, setMaLines] = useState<number[]>([5, 20, 60]);
 
