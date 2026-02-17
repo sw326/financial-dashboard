@@ -35,11 +35,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const { cookies } = await import("next/headers");
+  const cookieStore = await cookies();
+  const sidebarState = cookieStore.get("sidebar_state")?.value;
+  const sidebarOpen = sidebarState === undefined ? true : sidebarState === "true";
   return (
     <html lang="ko" suppressHydrationWarning>
       <body
@@ -53,7 +57,7 @@ export default function RootLayout({
         >
           <QueryProvider>
             <TooltipProvider>
-              <SidebarProvider>
+              <SidebarProvider defaultOpen={sidebarOpen}>
                 <AppSidebar />
                 <main className="w-full">
                   <div className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
