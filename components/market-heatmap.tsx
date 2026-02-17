@@ -6,20 +6,18 @@ import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, TrendingDown } from "lucide-react";
 
-// finviz 스타일 색상: 초록=상승, 빨강=하락, 회색=보합
 function getHeatmapColor(pct: number): string {
-  if (pct >= 3) return "#2d8c3c";   // bright green
-  if (pct >= 2) return "#245f30";   // medium green
-  if (pct >= 1) return "#1e3a28";   // dark muted green
-  if (pct > 0) return "#2a3a2e";    // very dark green tint
-  if (pct === 0) return "#2a2a2e";  // charcoal gray
-  if (pct > -1) return "#3a2a2a";   // very dark red tint
-  if (pct > -2) return "#4a2028";   // dark muted red
-  if (pct > -3) return "#6b2030";   // medium red
-  return "#8b1a2b";                  // deep crimson
+  if (pct >= 3) return "#2d8c3c";
+  if (pct >= 2) return "#245f30";
+  if (pct >= 1) return "#1e3a28";
+  if (pct > 0) return "#2a3a2e";
+  if (pct === 0) return "#2a2a2e";
+  if (pct > -1) return "#3a2a2a";
+  if (pct > -2) return "#4a2028";
+  if (pct > -3) return "#6b2030";
+  return "#8b1a2b";
 }
 
-// 색상 범례용 (정확한 단계별 색상)
 const LEGEND_COLORS = [
   { label: "-3%", color: "#8b1a2b" },
   { label: "-2%", color: "#6b2030" },
@@ -49,22 +47,27 @@ interface HeatmapStock {
   changePercent: number;
   marketCap: number;
   market: string;
+  sector?: string;
 }
 
-interface TreemapRect {
+interface WeightedItem {
+  weight: number;
+}
+
+interface TreemapRect<T extends WeightedItem> {
   x: number;
   y: number;
   w: number;
   h: number;
-  stock: HeatmapStock & { weight: number };
+  item: T;
 }
 
-function squarify(
-  items: (HeatmapStock & { weight: number })[],
+function squarify<T extends WeightedItem>(
+  items: T[],
   x: number, y: number, w: number, h: number
-): TreemapRect[] {
+): TreemapRect<T>[] {
   if (items.length === 0) return [];
-  if (items.length === 1) return [{ x, y, w, h, stock: items[0] }];
+  if (items.length === 1) return [{ x, y, w, h, item: items[0] }];
 
   const totalWeight = items.reduce((s, i) => s + i.weight, 0);
   if (totalWeight === 0) return [];
@@ -102,7 +105,12 @@ function squarify(
   }
 }
 
-// 호버 팝오버
+interface SectorGroup extends WeightedItem {
+  name: string;
+  stocks: (HeatmapStock & { weight: number })[];
+  totalMcap: number;
+}
+
 function HoverCard({
   stock,
   position,
@@ -118,39 +126,28 @@ function HoverCard({
   return (
     <div
       className="fixed z-50 pointer-events-auto bg-popover border border-border rounded-lg shadow-xl p-3 min-w-[200px] max-w-[260px]"
-      style={{
-        left: position.x,
-        top: position.y,
-      }}
-      onClick={(e) => {
-        e.stopPropagation();
-        onNavigate(stock.symbol);
-      }}
+      style={{ left: position.x, top: position.y }}
+      onClick={(e) => { e.stopPropagation(); onNavigate(stock.symbol); }}
     >
       <div className="cursor-pointer hover:opacity-80 transition-opacity">
-        {/* 종목명 + 심볼 */}
         <div className="flex items-center justify-between gap-2 mb-1.5">
           <span className="font-semibold text-sm text-foreground truncate">{stock.name}</span>
           <span className="text-xs text-muted-foreground shrink-0">{stock.symbol}</span>
         </div>
-
-        {/* 가격 + 등락 */}
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-lg font-bold tabular-nums text-foreground">
             {isKR ? stock.price.toLocaleString() : stock.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </span>
           <div className={`flex items-center gap-1 text-sm font-semibold ${isUp ? "text-green-500" : "text-red-500"}`}>
             {isUp ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
-            <span className="tabular-nums">
-              {isUp ? "+" : ""}{stock.changePercent.toFixed(2)}%
-            </span>
+            <span className="tabular-nums">{isUp ? "+" : ""}{stock.changePercent.toFixed(2)}%</span>
           </div>
         </div>
-
-        {/* 시총 + 마켓 */}
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>시총 {fmtKrw(stock.marketCap)}</span>
-          <span className="px-1.5 py-0.5 rounded bg-muted text-[10px]">{stock.market}</span>
+          <span className="px-1.5 py-0.5 rounded bg-muted text-[10px]">
+            {stock.sector || stock.market}
+          </span>
         </div>
       </div>
     </div>
@@ -171,43 +168,28 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
   const stocks = response?.stocks || [];
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // 호버 상태
   const [hoveredStock, setHoveredStock] = useState<HeatmapStock | null>(null);
   const [popoverPos, setPopoverPos] = useState({ x: 0, y: 0 });
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleMouseEnter = useCallback((stock: HeatmapStock, e: React.MouseEvent) => {
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-    
-    // 팝오버 위치 계산 (뷰포트 기준)
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const viewportW = window.innerWidth;
     const viewportH = window.innerHeight;
     const popoverW = 240;
     const popoverH = 120;
-
     let x = rect.right + 8;
     let y = rect.top;
-
-    // 오른쪽 넘침 → 왼쪽에 표시
-    if (x + popoverW > viewportW - 16) {
-      x = rect.left - popoverW - 8;
-    }
-    // 아래 넘침 → 위로 올림
-    if (y + popoverH > viewportH - 16) {
-      y = viewportH - popoverH - 16;
-    }
-    // 위 넘침
+    if (x + popoverW > viewportW - 16) x = rect.left - popoverW - 8;
+    if (y + popoverH > viewportH - 16) y = viewportH - popoverH - 16;
     if (y < 16) y = 16;
-
     setPopoverPos({ x, y });
     setHoveredStock(stock);
   }, []);
 
   const handleMouseLeave = useCallback(() => {
-    hoverTimeoutRef.current = setTimeout(() => {
-      setHoveredStock(null);
-    }, 150);
+    hoverTimeoutRef.current = setTimeout(() => setHoveredStock(null), 150);
   }, []);
 
   const handleNavigate = useCallback((symbol: string) => {
@@ -215,41 +197,132 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
     router.push(`/stock/${encodeURIComponent(symbol)}`);
   }, [router]);
 
-  const rects = useMemo(() => {
-    if (stocks.length === 0) return [];
+  // Build nested sector → stock treemap
+  const { sectorRects, stockRects } = useMemo(() => {
+    if (stocks.length === 0) return { sectorRects: [], stockRects: [] };
+
+    const hasSectors = stocks.some((s) => s.sector);
+
+    // If no sector info, fall back to flat treemap
+    if (!hasSectors) {
+      const totalMcap = stocks.reduce((s, st) => s + (st.marketCap || 0), 0);
+      if (totalMcap === 0) return { sectorRects: [], stockRects: [] };
+      const weighted = stocks
+        .filter((s) => (s.marketCap || 0) > 0)
+        .map((s) => ({ ...s, weight: (s.marketCap || 0) / totalMcap }))
+        .sort((a, b) => b.weight - a.weight);
+      const rects = squarify(weighted, 0, 0, 100, 100);
+      return {
+        sectorRects: [],
+        stockRects: rects.map((r) => ({
+          x: r.x, y: r.y, w: r.w, h: r.h,
+          stock: r.item,
+        })),
+      };
+    }
+
+    // Group by sector
+    const sectorMap = new Map<string, HeatmapStock[]>();
+    for (const s of stocks) {
+      const sec = s.sector || "기타";
+      if (!sectorMap.has(sec)) sectorMap.set(sec, []);
+      sectorMap.get(sec)!.push(s);
+    }
+
     const totalMcap = stocks.reduce((s, st) => s + (st.marketCap || 0), 0);
-    if (totalMcap === 0) return [];
+    if (totalMcap === 0) return { sectorRects: [], stockRects: [] };
 
-    const weighted = stocks
-      .filter((s) => (s.marketCap || 0) > 0)
-      .map((s) => ({ ...s, weight: (s.marketCap || 0) / totalMcap }))
-      .sort((a, b) => b.weight - a.weight);
+    const sectorGroups: SectorGroup[] = [];
+    for (const [name, sectorStocks] of sectorMap) {
+      const sectorTotalMcap = sectorStocks.reduce((s, st) => s + (st.marketCap || 0), 0);
+      sectorGroups.push({
+        name,
+        stocks: sectorStocks
+          .filter((s) => (s.marketCap || 0) > 0)
+          .map((s) => ({ ...s, weight: s.marketCap || 0 }))
+          .sort((a, b) => b.weight - a.weight),
+        totalMcap: sectorTotalMcap,
+        weight: sectorTotalMcap / totalMcap,
+      });
+    }
+    sectorGroups.sort((a, b) => b.weight - a.weight);
 
-    return squarify(weighted, 0, 0, 100, 100);
+    // Level 1: sector layout
+    const sectorLayout = squarify(sectorGroups, 0, 0, 100, 100);
+
+    const finalSectorRects: { x: number; y: number; w: number; h: number; name: string }[] = [];
+    const finalStockRects: { x: number; y: number; w: number; h: number; stock: HeatmapStock & { weight: number } }[] = [];
+
+    for (const sr of sectorLayout) {
+      const sg = sr.item;
+      finalSectorRects.push({ x: sr.x, y: sr.y, w: sr.w, h: sr.h, name: sg.name });
+
+      // Level 2: stocks within sector
+      // Normalize weights within sector
+      const sectorTotal = sg.stocks.reduce((s, st) => s + st.weight, 0);
+      const normalized = sg.stocks.map((s) => ({ ...s, weight: s.weight / sectorTotal }));
+      const stockLayout = squarify(normalized, sr.x, sr.y, sr.w, sr.h);
+
+      for (const stk of stockLayout) {
+        finalStockRects.push({
+          x: stk.x, y: stk.y, w: stk.w, h: stk.h,
+          stock: stk.item,
+        });
+      }
+    }
+
+    return { sectorRects: finalSectorRects, stockRects: finalStockRects };
   }, [stocks]);
 
   if (isLoading) return <Skeleton className="h-[350px] w-full rounded-lg" />;
-  if (rects.length === 0) return null;
+  if (stockRects.length === 0) return null;
 
   return (
     <>
       <div ref={containerRef} className="relative w-full" style={{ aspectRatio: "16/9" }}>
-        {rects.map((rect) => {
+        {/* Sector borders & labels */}
+        {sectorRects.map((sr) => {
+          const area = sr.w * sr.h;
+          const showLabel = area > 15;
+          return (
+            <div
+              key={`sector-${sr.name}`}
+              className="absolute pointer-events-none border-2 border-zinc-700/80 dark:border-zinc-600/80"
+              style={{
+                left: `${sr.x}%`,
+                top: `${sr.y}%`,
+                width: `${sr.w}%`,
+                height: `${sr.h}%`,
+                zIndex: 20,
+              }}
+            >
+              {showLabel && (
+                <div
+                  className="absolute top-0 left-0 px-1.5 py-0.5 text-[10px] sm:text-xs font-semibold text-white/80 bg-black/40 backdrop-blur-sm rounded-br-sm whitespace-nowrap overflow-hidden"
+                  style={{ maxWidth: "90%", zIndex: 25 }}
+                >
+                  {sr.name}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Stock cells */}
+        {stockRects.map((rect) => {
           const pct = rect.stock.changePercent;
           const bg = getHeatmapColor(pct);
           const txtColor = getTextColor();
           const area = rect.w * rect.h;
           const isHovered = hoveredStock?.symbol === rect.stock.symbol;
 
-          // 미장은 티커명 사용 (간결), 국장은 종목명
           const isUS = !rect.stock.symbol.endsWith(".KS") && !rect.stock.symbol.endsWith(".KQ");
           const displayName = isUS
             ? rect.stock.symbol.replace(/\^/, "")
             : rect.stock.name;
 
-          // 블록 크기에 따른 폰트 사이즈 (finviz 스타일)
           let nameFontSize: string;
-          let pctFontSize: string;
+          let pctFontSize: string = "";
           let showName = true;
           let showPercent = true;
 
@@ -305,7 +378,7 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
               )}
               {showPercent && (
                 <span
-                  className={`${pctFontSize!} tabular-nums font-semibold leading-tight whitespace-nowrap`}
+                  className={`${pctFontSize} tabular-nums font-semibold leading-tight whitespace-nowrap`}
                   style={{ textShadow: "1px 1px 2px rgba(0,0,0,0.6), 0 0 4px rgba(0,0,0,0.3)" }}
                 >
                   {pct >= 0 ? "+" : ""}{pct.toFixed(2)}%
@@ -332,7 +405,6 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
         ))}
       </div>
 
-      {/* 호버 팝오버 */}
       {hoveredStock && (
         <HoverCard
           stock={hoveredStock}
