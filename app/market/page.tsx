@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { BarChart3 } from "lucide-react";
 import { useQuotes } from "@/hooks/use-quotes";
 import { useTrending } from "@/hooks/use-trending";
 import StockList from "@/components/stock-list";
-import MarketHeatmap from "@/components/market-heatmap";
+import { IndexCarousel } from "@/components/index-carousel";
 import type { MarketIndex } from "@/lib/types";
 
 const INDICES = [
@@ -24,54 +24,11 @@ const INDICES = [
   { symbol: "BTC-USD", name: "비트코인" },
 ];
 
-// 작은 카드 4개씩 캐로셀
-function IndexCarousel({ indices }: { indices: MarketIndex[] }) {
-  const [offset, setOffset] = useState(0);
-  const itemsPerView = 4;
-
-  useEffect(() => {
-    if (indices.length === 0) return;
-    const timer = setInterval(() => {
-      setOffset((prev) => (prev + itemsPerView) % indices.length);
-    }, 3000);
-    return () => clearInterval(timer);
-  }, [indices.length]);
-
-  const color = (v: number) => (v >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]");
-  const sign = (v: number) => (v >= 0 ? "+" : "");
-
-  const visible: MarketIndex[] = [];
-  for (let i = 0; i < itemsPerView && i < indices.length; i++) {
-    visible.push(indices[(offset + i) % indices.length]);
-  }
-
-  return (
-    <div className="grid grid-cols-4 gap-2">
-      {visible.map((idx) => (
-        <div
-          key={`${idx.symbol}-${offset}`}
-          className="rounded-lg border bg-card p-2 text-center transition-all duration-500"
-        >
-          <div className="text-xs text-muted-foreground">{idx.name}</div>
-          <div className="text-sm font-semibold tabular-nums">
-            {idx.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-          </div>
-          <div className={`text-xs tabular-nums ${color(idx.changePercent)}`}>
-            {sign(idx.changePercent)}{idx.changePercent.toFixed(2)}%
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export default function MarketPage() {
   const [tab, setTab] = useState("hot");
   const [market, setMarket] = useState("all");
   const [krMarket, setKrMarket] = useState("all");
   const [page, setPage] = useState(1);
-  const [heatmapMarket, setHeatmapMarket] = useState("kr");
-
   // 주요 지수 + 원자재 조회
   const allSymbols = useMemo(() => INDICES.map((i) => i.symbol), []);
   const { data: indicesData = [], isLoading: indicesLoading } = useQuotes(allSymbols);
@@ -112,37 +69,6 @@ export default function MarketPage() {
       ) : (
         <IndexCarousel indices={indices} />
       )}
-
-      {/* 시장 히트맵 */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">시장 히트맵</CardTitle>
-          <CardAction>
-            <div className="flex gap-1 bg-muted rounded-lg p-1">
-              {[
-                { value: "kr", label: "국장" },
-                { value: "us", label: "미장" },
-              ].map((m) => (
-                <Button
-                  key={m.value}
-                  variant="ghost"
-                  size="sm"
-                  className={cn(
-                    "rounded-md text-xs h-7",
-                    heatmapMarket === m.value && "bg-background shadow-sm"
-                  )}
-                  onClick={() => setHeatmapMarket(m.value)}
-                >
-                  {m.label}
-                </Button>
-              ))}
-            </div>
-          </CardAction>
-        </CardHeader>
-        <CardContent className="p-3 pt-0">
-          <MarketHeatmap market={heatmapMarket} />
-        </CardContent>
-      </Card>
 
       {/* 탭 + 마켓 필터 */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">

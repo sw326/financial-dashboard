@@ -31,8 +31,8 @@ interface LightweightChartProps {
 
 export const MA_COLORS: Record<number, string> = {
   5: "#f59e0b",
-  20: "#ef4444",
-  60: "#3b82f6",
+  20: "#a855f7",
+  60: "#06b6d4",
 };
 
 function calculateMA(data: ChartData[], period: number) {
@@ -106,8 +106,10 @@ function LightweightChartInner({ data, loading, chartType = "candle", maLines }:
         }))
       );
     } else if (chartType === "line") {
+      const isUp = data[data.length - 1].close >= data[0].close;
+      const lineColor = isUp ? "#ef4444" : "#3b82f6";
       const lineSeries = chart.addSeries(LineSeries, {
-        color: isDark ? "#e5e5e5" : "#1a1a1a",
+        color: lineColor,
         lineWidth: 2,
       });
 
@@ -118,10 +120,11 @@ function LightweightChartInner({ data, loading, chartType = "candle", maLines }:
         }))
       );
     } else if (chartType === "area") {
+      const isUp = data[data.length - 1].close >= data[0].close;
       const areaSeries = chart.addSeries(AreaSeries, {
-        lineColor: isDark ? "#e5e5e5" : "#1a1a1a",
-        topColor: isDark ? "rgba(229,229,229,0.3)" : "rgba(26,26,26,0.3)",
-        bottomColor: isDark ? "rgba(229,229,229,0.02)" : "rgba(26,26,26,0.02)",
+        lineColor: isUp ? "#ef4444" : "#3b82f6",
+        topColor: isUp ? "rgba(239,68,68,0.3)" : "rgba(59,130,246,0.3)",
+        bottomColor: isUp ? "rgba(239,68,68,0.02)" : "rgba(59,130,246,0.02)",
         lineWidth: 2,
       });
 

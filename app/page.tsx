@@ -1,38 +1,38 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sparkline } from "@/components/sparkline";
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  BarChart3, 
-  ArrowLeftRight, 
-  Home as HomeIcon, 
-  Map as MapIcon, 
+import { cn } from "@/lib/utils";
+import {
+  TrendingUp,
+  TrendingDown,
+  BarChart3,
+  Home as HomeIcon,
+  Map as MapIcon,
   ExternalLink,
   LineChart,
   ClipboardList,
-  Trophy
+  Trophy,
 } from "lucide-react";
 import { useQuotes } from "@/hooks/use-quotes";
 import { useRecentTrades } from "@/hooks/use-recent-trades";
+import { IndexCarousel } from "@/components/index-carousel";
+import MarketHeatmap from "@/components/market-heatmap";
 
 const Map = dynamic(() => import("@/components/Map"), { ssr: false });
 const KAKAO_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY || "";
 
 /* ── 설정 ── */
-const INDEX_SYMBOLS = [
+const CAROUSEL_SYMBOLS = [
   { symbol: "^KS11", label: "코스피" },
   { symbol: "^KQ11", label: "코스닥" },
   { symbol: "^GSPC", label: "S&P 500" },
   { symbol: "^IXIC", label: "나스닥" },
-];
-
-const COMMODITY_SYMBOLS = [
   { symbol: "KRW=X", label: "USD/KRW" },
   { symbol: "GC=F", label: "금" },
   { symbol: "CL=F", label: "WTI유" },
@@ -40,15 +40,15 @@ const COMMODITY_SYMBOLS = [
 ];
 
 const HIGHLIGHT_SYMBOLS = [
-  "005930.KS",   // 삼성전자
-  "000660.KS",   // SK하이닉스
-  "373220.KS",   // LG에너지솔루션
-  "035420.KS",   // NAVER
-  "035720.KS",   // 카카오
-  "051910.KS",   // LG화학
+  "005930.KS",
+  "000660.KS",
+  "373220.KS",
+  "035420.KS",
+  "035720.KS",
+  "051910.KS",
 ];
 
-const GANGNAM_CODE = "11680"; // 강남구
+const GANGNAM_CODE = "11680";
 
 const SHORTCUTS = [
   { href: "/market", icon: BarChart3, label: "시장개요", group: "증시" },
@@ -60,7 +60,6 @@ const SHORTCUTS = [
 
 /* ── 유틸 ── */
 const colorClass = (v: number) => (v >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]");
-const colorValue = (v: number) => (v >= 0 ? "#ef4444" : "#3b82f6");
 const sign = (v: number) => (v >= 0 ? "+" : "");
 const fmt = (v: number, digits = 2) =>
   v.toLocaleString(undefined, { maximumFractionDigits: digits });
@@ -70,114 +69,72 @@ function dealYmd() {
   return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-// 임시 Sparkline 데이터 생성 (실제로는 히스토리 API 필요)
-function generateSparklineData(changePercent: number): number[] {
-  const points = 20;
-  const data: number[] = [];
-  const trend = changePercent > 0 ? 1 : -1;
-  
-  for (let i = 0; i < points; i++) {
-    const noise = (Math.random() - 0.5) * 4;  // 2 → 4로 변동폭 증가
-    const trendValue = (i / points) * trend * 3;  // 트렌드 강조
-    data.push(100 + trendValue + noise);
-  }
-  
-  return data;
-}
-
 /* ── 페이지 ── */
 export default function Home() {
-  // React Query hooks
-  const { data: indices = [], isLoading: loadIdx } = useQuotes(INDEX_SYMBOLS.map((i) => i.symbol));
-  const { data: commodities = [], isLoading: loadCom } = useQuotes(COMMODITY_SYMBOLS.map((i) => i.symbol));
+  const [heatmapMarket, setHeatmapMarket] = useState("kr");
+
+  const allSymbols = useMemo(() => CAROUSEL_SYMBOLS.map((i) => i.symbol), []);
+  const { data: carouselData = [], isLoading: loadCarousel } = useQuotes(allSymbols);
   const { data: highlights = [], isLoading: loadHl } = useQuotes(HIGHLIGHT_SYMBOLS);
   const { data: trades = [], isLoading: loadTrade } = useRecentTrades(GANGNAM_CODE, dealYmd(), 5);
 
-  const findIdx = (sym: string) => indices.find((i) => i.symbol === sym);
-  const findCom = (sym: string) => commodities.find((i) => i.symbol === sym);
+  const carouselIndices = useMemo(() => {
+    return carouselData.map((d) => {
+      const info = CAROUSEL_SYMBOLS.find((i) => i.symbol === d.symbol);
+      return { ...d, name: info?.label || d.name };
+    });
+  }, [carouselData]);
 
   return (
     <div className="space-y-6">
-      {/* ── 1. 주요 지수 (with Sparkline) ── */}
+      {/* ── 1. 지수/원자재 캐로셀 ── */}
       <section>
-        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-          <BarChart3 className="size-5 text-muted-foreground" />
-          주요 지수
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          {loadIdx
-            ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-40" />)
-            : INDEX_SYMBOLS.map(({ symbol, label }) => {
-                const d = findIdx(symbol);
-                if (!d) return null;
-                const sparkData = generateSparklineData(d.changePercent);
-                
-                return (
-                  <Card key={symbol} className="hover:shadow-lg transition-shadow">
-                    <CardHeader className="flex-row items-start justify-between space-y-0">
-                      <div className="space-y-1">
-                        <CardDescription>{label}</CardDescription>
-                        <CardTitle className="text-2xl font-semibold tabular-nums">{fmt(d.price)}</CardTitle>
-                      </div>
-                      <CardAction>
-                        <Badge variant="outline" className={`text-sm font-semibold ${colorClass(d.changePercent)}`}>
-                          {d.changePercent >= 0 ? <TrendingUp className="size-4 mr-1" /> : <TrendingDown className="size-4 mr-1" />}
-                          {sign(d.changePercent)}{d.changePercent.toFixed(2)}%
-                        </Badge>
-                      </CardAction>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-12 -mx-2">
-                        <Sparkline data={sparkData} color={colorValue(d.changePercent)} />
-                      </div>
-                    </CardContent>
-                    <CardFooter className="flex-col items-start gap-1 text-sm">
-                      <div className={`flex gap-2 font-medium ${colorClass(d.change)}`}>
-                        {sign(d.change)}{fmt(d.change)}
-                      </div>
-                      <div className="text-muted-foreground">전일 대비</div>
-                    </CardFooter>
-                  </Card>
-                );
-              })}
-        </div>
+        {loadCarousel ? (
+          <div className="grid grid-cols-4 gap-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 rounded-lg" />
+            ))}
+          </div>
+        ) : (
+          <IndexCarousel indices={carouselIndices} />
+        )}
       </section>
 
-      {/* ── 2. 환율/원자재 ── */}
+      {/* ── 2. 시장 히트맵 ── */}
       <section>
-        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-          <ArrowLeftRight className="size-5 text-muted-foreground" />
-          환율 · 원자재
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          {loadCom
-            ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)
-            : COMMODITY_SYMBOLS.map(({ symbol, label }) => {
-                const d = findCom(symbol);
-                if (!d) return null;
-                return (
-                  <Card key={symbol} className="hover:shadow-md transition-shadow">
-                    <CardHeader className="flex-row items-start justify-between space-y-0 pb-2">
-                      <div className="space-y-1">
-                        <CardDescription>{label}</CardDescription>
-                        <CardTitle className="text-xl font-semibold tabular-nums">{fmt(d.price)}</CardTitle>
-                      </div>
-                    </CardHeader>
-                    <CardFooter className="pt-2">
-                      <Badge variant="outline" className={`text-xs ${colorClass(d.changePercent)}`}>
-                        {d.changePercent >= 0 ? <TrendingUp className="size-3 mr-1" /> : <TrendingDown className="size-3 mr-1" />}
-                        {sign(d.changePercent)}{d.changePercent.toFixed(2)}%
-                      </Badge>
-                    </CardFooter>
-                  </Card>
-                );
-              })}
-        </div>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">시장 히트맵</CardTitle>
+            <CardAction>
+              <div className="flex gap-1 bg-muted rounded-lg p-1">
+                {[
+                  { value: "kr", label: "국장" },
+                  { value: "us", label: "미장" },
+                ].map((m) => (
+                  <Button
+                    key={m.value}
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "rounded-md text-xs h-7",
+                      heatmapMarket === m.value && "bg-background shadow-sm"
+                    )}
+                    onClick={() => setHeatmapMarket(m.value)}
+                  >
+                    {m.label}
+                  </Button>
+                ))}
+              </div>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="p-3 pt-0">
+            <MarketHeatmap market={heatmapMarket} />
+          </CardContent>
+        </Card>
       </section>
 
       {/* ── 3. 증시 하이라이트 + 부동산 최근 거래 ── */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        {/* 증시 하이라이트 */}
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -218,7 +175,6 @@ export default function Home() {
           </CardContent>
         </Card>
 
-        {/* 최근 부동산 거래 */}
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">

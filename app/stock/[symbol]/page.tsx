@@ -3,9 +3,12 @@
 import { use, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// ToggleGroup removed - using Button group instead
 import { TrendingUp, TrendingDown, BarChart3, Activity, Target, Landmark, PiggyBank, Users } from "lucide-react";
 import type { StockQuote } from "@/lib/types";
 import { useQuotes } from "@/hooks/use-quotes";
@@ -13,7 +16,24 @@ import { useChart } from "@/hooks/use-chart";
 import { useSummary, type StockSummary } from "@/hooks/use-summary";
 import { LightweightChart, MA_COLORS } from "@/components/lightweight-chart";
 
-const PERIODS = ["1mo", "3mo", "6mo", "1y", "5y"] as const;
+const MINUTE_OPTIONS = [
+  { value: "1m", label: "1분" },
+  { value: "3m", label: "3분" },
+  { value: "5m", label: "5분" },
+  { value: "10m", label: "10분" },
+  { value: "15m", label: "15분" },
+  { value: "30m", label: "30분" },
+  { value: "60m", label: "60분" },
+];
+
+const PERIOD_OPTIONS = [
+  { value: "1d", label: "일" },
+  { value: "1wk", label: "주" },
+  { value: "1mo", label: "월" },
+  { value: "1y", label: "년" },
+];
+
+const isMinutePeriod = (p: string) => MINUTE_OPTIONS.some((m) => m.value === p);
 
 interface Props {
   params: Promise<{ symbol: string }>;
@@ -55,9 +75,12 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 }
 
 function StockDetailContent({ symbol }: { symbol: string }) {
-  const [period, setPeriod] = useState("6mo");
+  const [period, setPeriod] = useState("1d");
   const [chartType, setChartType] = useState<"candle" | "line" | "area">("candle");
   const [maLines, setMaLines] = useState<number[]>([5, 20, 60]);
+
+  const isMinute = isMinutePeriod(period);
+  const minuteValue = isMinute ? period : "1m";
 
   const { data: quoteData = [], isLoading: quoteLoading, error: quoteError } = useQuotes([symbol]);
   const { data: chartData = [], isLoading: chartLoading } = useChart(symbol, period);
@@ -127,16 +150,55 @@ function StockDetailContent({ symbol }: { symbol: string }) {
         {/* === 차트 탭 === */}
         <TabsContent value="chart" className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <ToggleGroup type="single" value={period} onValueChange={(v) => v && setPeriod(v)}>
-              {PERIODS.map((p) => (
-                <ToggleGroupItem key={p} value={p} className="px-3 text-xs">{p}</ToggleGroupItem>
+            <div className="flex items-center gap-2">
+              <Select value={minuteValue} onValueChange={(v) => setPeriod(v)}>
+                <SelectTrigger className="w-[80px] h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MINUTE_OPTIONS.map((m) => (
+                    <SelectItem key={m.value} value={m.value} className="text-xs">{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex gap-1 bg-muted rounded-lg p-1">
+                {PERIOD_OPTIONS.map((p) => (
+                  <Button
+                    key={p.value}
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "rounded-md text-xs h-7 px-3",
+                      !isMinute && period === p.value && "bg-background shadow-sm"
+                    )}
+                    onClick={() => setPeriod(p.value)}
+                  >
+                    {p.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-1 bg-muted rounded-lg p-1">
+              {[
+                { value: "candle" as const, icon: BarChart3, title: "캔들" },
+                { value: "line" as const, icon: TrendingUp, title: "라인" },
+                { value: "area" as const, icon: Activity, title: "영역" },
+              ].map((ct) => (
+                <Button
+                  key={ct.value}
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "rounded-md text-xs h-7 px-2",
+                    chartType === ct.value && "bg-background shadow-sm"
+                  )}
+                  onClick={() => setChartType(ct.value)}
+                  title={ct.title}
+                >
+                  <ct.icon className="size-4" />
+                </Button>
               ))}
-            </ToggleGroup>
-            <ToggleGroup type="single" value={chartType} onValueChange={(v) => v && setChartType(v as "candle" | "line" | "area")}>
-              <ToggleGroupItem value="candle" className="px-3 text-xs" title="캔들"><BarChart3 className="size-4" /></ToggleGroupItem>
-              <ToggleGroupItem value="line" className="px-3 text-xs" title="라인"><TrendingUp className="size-4" /></ToggleGroupItem>
-              <ToggleGroupItem value="area" className="px-3 text-xs" title="영역"><Activity className="size-4" /></ToggleGroupItem>
-            </ToggleGroup>
+            </div>
           </div>
           <div className="flex items-center gap-3 text-sm">
             <span className="text-muted-foreground text-xs">이동평균선:</span>
