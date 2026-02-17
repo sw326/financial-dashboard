@@ -1,10 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
-import { useTrending } from "@/hooks/use-trending";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { MarketIndex } from "@/lib/types";
 
 // 미국장 컨벤션: 초록=상승, 빨강=하락
 function getHeatmapColor(pct: number): string {
@@ -25,17 +24,26 @@ function getTextColor(pct: number): string {
   return Math.abs(pct) >= 0.5 ? "#ffffff" : "#e5e7eb";
 }
 
+interface HeatmapStock {
+  symbol: string;
+  name: string;
+  price: number;
+  changePercent: number;
+  marketCap: number;
+  market: string;
+}
+
 // Squarified treemap algorithm
 interface TreemapRect {
   x: number;
   y: number;
   w: number;
   h: number;
-  stock: MarketIndex & { weight: number };
+  stock: HeatmapStock & { weight: number };
 }
 
 function squarify(
-  items: (MarketIndex & { weight: number })[],
+  items: (HeatmapStock & { weight: number })[],
   x: number,
   y: number,
   w: number,
@@ -85,7 +93,15 @@ function squarify(
 }
 
 export default function MarketHeatmap() {
-  const { data: response, isLoading } = useTrending("hot", "all", 1, 30);
+  const { data: response, isLoading } = useQuery({
+    queryKey: ["heatmap"],
+    queryFn: async () => {
+      const res = await fetch("/api/finance/heatmap?market=all");
+      if (!res.ok) throw new Error("Failed");
+      return res.json() as Promise<{ stocks: HeatmapStock[]; total: number }>;
+    },
+    staleTime: 1000 * 60 * 5, // 5분
+  });
   const router = useRouter();
   const stocks = response?.stocks || [];
 
