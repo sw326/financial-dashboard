@@ -7,6 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SEOUL_GU } from "@/lib/constants";
+import FilterBar from "@/components/FilterBar";
 import Charts from "@/components/Charts";
 import TradeTable from "@/components/TradeTable";
 
@@ -62,15 +63,18 @@ function RegionDetail({ region }: { region: string }) {
         <TabsTrigger value="map">지도</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="trend">
+      <TabsContent value="trend" className="space-y-4">
+        <FilterBar showRegion={false} showArea={true} showPeriod={true} />
         <Charts region={region} />
       </TabsContent>
 
-      <TabsContent value="trades">
+      <TabsContent value="trades" className="space-y-4">
+        <FilterBar showRegion={false} showArea={true} showPeriod={false} />
         <TradeTable region={region} />
       </TabsContent>
 
-      <TabsContent value="rank">
+      <TabsContent value="rank" className="space-y-4">
+        <FilterBar showRegion={false} showArea={true} showPeriod={true} />
         <RankChart region={region} />
       </TabsContent>
 

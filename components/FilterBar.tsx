@@ -27,11 +27,12 @@ const PERIOD_OPTIONS = [
 ];
 
 interface FilterBarProps {
+  showRegion?: boolean;
   showArea?: boolean;
   showPeriod?: boolean;
 }
 
-function FilterBarComponent({ showArea = true, showPeriod = true }: FilterBarProps) {
+function FilterBarComponent({ showRegion = true, showArea = true, showPeriod = true }: FilterBarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -51,7 +52,9 @@ function FilterBarComponent({ showArea = true, showPeriod = true }: FilterBarPro
 
   return (
     <div className="flex flex-wrap gap-3 p-4 bg-muted/50 rounded-lg border">
-      <RegionPicker value={region} onValueChange={(v) => updateParam("region", v)} />
+      {showRegion && (
+        <RegionPicker value={region} onValueChange={(v) => updateParam("region", v)} />
+      )}
 
       {showArea && (
         <Select value={area} onValueChange={(v) => updateParam("area", v)}>
