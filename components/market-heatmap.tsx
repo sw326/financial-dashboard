@@ -230,9 +230,35 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
           const bg = getHeatmapColor(pct);
           const txtColor = getTextColor(pct);
           const area = rect.w * rect.h;
-          const showPercent = area > 80;
-          const showName = area > 20;
           const isHovered = hoveredStock?.symbol === rect.stock.symbol;
+
+          // 블록 크기에 따른 폰트 사이즈 (finviz 스타일)
+          let nameFontSize: string;
+          let pctFontSize: string;
+          let showName = true;
+          let showPercent = true;
+
+          if (area > 500) {
+            // 매우 큰 블록 (삼성전자 등)
+            nameFontSize = "text-base sm:text-lg";
+            pctFontSize = "text-sm sm:text-base";
+          } else if (area > 200) {
+            nameFontSize = "text-sm sm:text-base";
+            pctFontSize = "text-xs sm:text-sm";
+          } else if (area > 80) {
+            nameFontSize = "text-xs sm:text-sm";
+            pctFontSize = "text-[10px] sm:text-xs";
+          } else if (area > 30) {
+            nameFontSize = "text-[10px] sm:text-xs";
+            pctFontSize = "text-[9px] sm:text-[10px]";
+          } else if (area > 10) {
+            nameFontSize = "text-[8px] sm:text-[10px]";
+            showPercent = false;
+          } else {
+            showName = false;
+            showPercent = false;
+            nameFontSize = "";
+          }
 
           return (
             <div
@@ -253,12 +279,12 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
               }}
             >
               {showName && (
-                <span className="text-[10px] sm:text-xs font-bold truncate max-w-[95%] leading-tight">
+                <span className={`${nameFontSize} font-bold truncate max-w-[95%] leading-tight`}>
                   {rect.stock.name}
                 </span>
               )}
               {showPercent && (
-                <span className="text-[9px] sm:text-xs tabular-nums font-semibold leading-tight opacity-90">
+                <span className={`${pctFontSize!} tabular-nums font-semibold leading-tight opacity-90`}>
                   {pct >= 0 ? "+" : ""}{pct.toFixed(2)}%
                 </span>
               )}
