@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { BarChart3 } from "lucide-react";
@@ -115,27 +115,29 @@ export default function MarketPage() {
 
       {/* 시장 히트맵 */}
       <Card>
-        <CardHeader className="pb-3 flex-row items-center justify-between">
+        <CardHeader className="pb-3">
           <CardTitle className="text-base">시장 히트맵</CardTitle>
-          <div className="flex gap-1 bg-muted rounded-lg p-1">
-            {[
-              { value: "kr", label: "국장" },
-              { value: "us", label: "미장" },
-            ].map((m) => (
-              <Button
-                key={m.value}
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "rounded-md text-xs h-7",
-                  heatmapMarket === m.value && "bg-background shadow-sm"
-                )}
-                onClick={() => setHeatmapMarket(m.value)}
-              >
-                {m.label}
-              </Button>
-            ))}
-          </div>
+          <CardAction>
+            <div className="flex gap-1 bg-muted rounded-lg p-1">
+              {[
+                { value: "kr", label: "국장" },
+                { value: "us", label: "미장" },
+              ].map((m) => (
+                <Button
+                  key={m.value}
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "rounded-md text-xs h-7",
+                    heatmapMarket === m.value && "bg-background shadow-sm"
+                  )}
+                  onClick={() => setHeatmapMarket(m.value)}
+                >
+                  {m.label}
+                </Button>
+              ))}
+            </div>
+          </CardAction>
         </CardHeader>
         <CardContent className="p-3 pt-0">
           <MarketHeatmap market={heatmapMarket} />
