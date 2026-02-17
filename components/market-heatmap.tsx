@@ -298,8 +298,13 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
             >
               {showLabel && (
                 <div
-                  className="absolute top-0 left-0 px-1.5 py-0.5 text-[10px] sm:text-xs font-semibold text-white/80 bg-black/40 backdrop-blur-sm rounded-br-sm whitespace-nowrap overflow-hidden"
-                  style={{ maxWidth: "90%", zIndex: 25 }}
+                  className="absolute top-0 left-0 right-0 text-center text-[9px] sm:text-[11px] font-medium text-zinc-300 tracking-wide uppercase truncate"
+                  style={{
+                    zIndex: 25,
+                    lineHeight: "16px",
+                    backgroundColor: "rgba(24,24,27,0.75)",
+                    borderBottom: "1px solid rgba(63,63,70,0.6)",
+                  }}
                 >
                   {sr.name}
                 </div>
