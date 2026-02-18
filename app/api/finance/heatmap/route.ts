@@ -4,6 +4,9 @@ import { getKrStockName } from "@/lib/kr-stock-names";
 import { US_SECTORS } from "@/lib/us-sectors";
 import { getKrSector, INDUSTRY_CODE_MAP } from "@/lib/kr-sectors";
 
+// Run in Seoul to access Naver API (blocks non-KR IPs)
+export const preferredRegion = "icn1";
+
 const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
 const NAVER_API = "https://m.stock.naver.com/api";

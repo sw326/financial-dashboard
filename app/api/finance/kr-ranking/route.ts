@@ -1,3 +1,6 @@
+// Run in Seoul for Naver API access
+export const preferredRegion = "icn1";
+
 import { NextRequest, NextResponse } from "next/server";
 
 // Naver Mobile Stock API - real-time KR stock rankings

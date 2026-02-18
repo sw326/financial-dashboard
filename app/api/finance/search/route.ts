@@ -1,3 +1,6 @@
+// Run in Seoul for Naver API access
+export const preferredRegion = "icn1";
+
 import { NextRequest, NextResponse } from "next/server";
 import YahooFinance from "yahoo-finance2";
 import { getKrStockName } from "@/lib/kr-stock-names";
