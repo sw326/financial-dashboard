@@ -455,7 +455,7 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
               <span
                 className={cn(
                   "font-medium leading-none truncate",
-                  (sr.w / 100) * containerSize.w < 60 ? "text-[7px]" : (sr.w / 100) * containerSize.w < 100 ? "text-[9px]" : "text-[11px]",
+                  (sr.w / 100) * (containerSize.w || 1200) < 60 ? "text-[7px]" : (sr.w / 100) * (containerSize.w || 1200) < 100 ? "text-[9px]" : "text-[11px]",
                   isHovered ? "text-amber-300" : "text-zinc-300"
                 )}
               >
@@ -477,8 +477,11 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
             : rect.stock.name;
 
           // Use actual pixel dimensions for responsive font sizing
-          const pxW = (rect.w / 100) * containerSize.w;
-          const pxH = (rect.h / 100) * containerSize.h;
+          // Fallback to percentage-based area when container size not yet measured
+          const cw = containerSize.w || 1200;
+          const ch = containerSize.h || 675;
+          const pxW = (rect.w / 100) * cw;
+          const pxH = (rect.h / 100) * ch;
           const pxArea = pxW * pxH;
 
           let nameFontSize: string;
