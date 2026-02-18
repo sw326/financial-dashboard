@@ -184,18 +184,33 @@ export async function GET(request: NextRequest) {
   const market = request.nextUrl.searchParams.get("market") || "all";
 
   try {
-    const [krStocks, usStocks] = await Promise.all([
-      market === "us" ? Promise.resolve([]) : fetchKrStocks(),
-      market === "kr" ? Promise.resolve([]) : fetchUsStocks(),
-    ]);
+    let krError: string | null = null;
+    let usError: string | null = null;
+    let krStocks: HeatmapStock[] = [];
+    let usStocks: HeatmapStock[] = [];
+
+    try {
+      krStocks = market === "us" ? [] : await fetchKrStocks();
+    } catch (e) {
+      krError = String(e);
+    }
+    try {
+      usStocks = market === "kr" ? [] : await fetchUsStocks();
+    } catch (e) {
+      usError = String(e);
+    }
 
     const stocks = [...krStocks, ...usStocks].sort(
       (a, b) => b.marketCap - a.marketCap
     );
 
-    return NextResponse.json({ stocks, total: stocks.length });
+    return NextResponse.json({
+      stocks,
+      total: stocks.length,
+      _debug: { krCount: krStocks.length, usCount: usStocks.length, krError, usError },
+    });
   } catch (error) {
     console.error("Heatmap API error:", error);
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    return NextResponse.json({ error: "Failed", _debug: String(error) }, { status: 500 });
   }
 }
