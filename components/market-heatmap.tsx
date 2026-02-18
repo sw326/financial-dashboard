@@ -487,24 +487,29 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
           let showName = true;
           let showPercent = true;
 
+          // Mobile: much more aggressive hiding
+          const isMobile = cw < 640;
+          const wThresh = isMobile ? 1.8 : 1;
+          const hThresh = isMobile ? 1.8 : 1;
+
           // Width/height determines what text can fit without overflow
-          if (pxW >= 160 && pxH >= 60) {
+          if (pxW >= 160 * wThresh && pxH >= 60 * hThresh) {
             nameFontSize = "text-base";
             pctFontSize = "text-sm";
-          } else if (pxW >= 120 && pxH >= 48) {
+          } else if (pxW >= 120 * wThresh && pxH >= 48 * hThresh) {
             nameFontSize = "text-sm";
             pctFontSize = "text-xs";
-          } else if (pxW >= 90 && pxH >= 40) {
+          } else if (pxW >= 90 * wThresh && pxH >= 40 * hThresh) {
             nameFontSize = "text-xs";
             pctFontSize = "text-[10px]";
-          } else if (pxW >= 65 && pxH >= 30) {
+          } else if (pxW >= 65 * wThresh && pxH >= 30 * hThresh) {
             // Name only, no percent
             nameFontSize = "text-xs";
             showPercent = false;
-          } else if (pxW >= 45 && pxH >= 20) {
+          } else if (pxW >= 45 * wThresh && pxH >= 20 * hThresh) {
             nameFontSize = "text-[10px]";
             showPercent = false;
-          } else if (pxW >= 30 && pxH >= 14) {
+          } else if (pxW >= 30 * wThresh && pxH >= 14 * hThresh) {
             nameFontSize = "text-[8px]";
             showPercent = false;
           } else {
