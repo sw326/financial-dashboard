@@ -132,7 +132,8 @@ async function fetchKrStocks(): Promise<HeatmapStock[]> {
     return results;
   } catch (e) {
     console.error("KR heatmap error:", e);
-    return [];
+    // Re-throw so caller can see the error in _debug
+    throw e;
   }
 }
 
