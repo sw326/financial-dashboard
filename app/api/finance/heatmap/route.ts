@@ -58,14 +58,21 @@ async function fetchKrStocks(): Promise<HeatmapStock[]> {
         next: { revalidate: 300 },
       }
     );
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.error("KR heatmap: naver API responded", res.status);
+      return [];
+    }
     const data = await res.json();
     const stocks = data.stocks || [];
+    console.log(`KR heatmap: fetched ${stocks.length} stocks, first stockEndType: ${stocks[0]?.stockEndType}`);
 
     // ETF 필터링: stockEndType이 "stock"인 것만 (etf 제외)
-    const filteredStocks = stocks.filter(
-      (s: { stockEndType?: string }) => s.stockEndType === "stock"
-    );
+    // fallback: stockEndType 필드 없으면 종목명 prefix로 필터링
+    const hasEndType = stocks.length > 0 && stocks[0]?.stockEndType;
+    const ETF_PREFIXES = ["KODEX", "TIGER", "KBSTAR", "ARIRANG", "ACE", "HANARO", "SOL", "KOSEF"];
+    const filteredStocks = hasEndType
+      ? stocks.filter((s: { stockEndType?: string }) => s.stockEndType === "stock")
+      : stocks.filter((s: { stockName?: string }) => !ETF_PREFIXES.some(p => (s.stockName || "").startsWith(p)));
 
     const results: HeatmapStock[] = [];
     // 하드코딩 매핑이 없는 종목들만 API 조회 (병렬 처리)
