@@ -476,48 +476,19 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
             ? rect.stock.symbol.replace(/\^/, "")
             : rect.stock.name;
 
-          // Responsive: use actual pixel width/height of the cell
+          // Responsive: font size proportional to cell pixel size
           const cw = containerSize.w || 1200;
           const ch = containerSize.h || 675;
           const pxW = (rect.w / 100) * cw;
           const pxH = (rect.h / 100) * ch;
 
-          let nameFontSize: string;
-          let pctFontSize = "";
-          let showName = true;
-          let showPercent = true;
+          // Dynamic font size: ~height/4 capped by width
+          const namePx = Math.min(pxH * 0.28, pxW * 0.14, 20);
+          const pctPx = namePx * 0.8;
 
-          // Mobile: much more aggressive hiding
-          const isMobile = cw < 640;
-          const wThresh = isMobile ? 1.8 : 1;
-          const hThresh = isMobile ? 1.8 : 1;
-
-          // Width/height determines what text can fit without overflow
-          if (pxW >= 160 * wThresh && pxH >= 60 * hThresh) {
-            nameFontSize = "text-base";
-            pctFontSize = "text-sm";
-          } else if (pxW >= 120 * wThresh && pxH >= 48 * hThresh) {
-            nameFontSize = "text-sm";
-            pctFontSize = "text-xs";
-          } else if (pxW >= 90 * wThresh && pxH >= 40 * hThresh) {
-            nameFontSize = "text-xs";
-            pctFontSize = "text-[10px]";
-          } else if (pxW >= 65 * wThresh && pxH >= 30 * hThresh) {
-            // Name only, no percent
-            nameFontSize = "text-xs";
-            showPercent = false;
-          } else if (pxW >= 45 * wThresh && pxH >= 20 * hThresh) {
-            nameFontSize = "text-[10px]";
-            showPercent = false;
-          } else if (pxW >= 30 * wThresh && pxH >= 14 * hThresh) {
-            nameFontSize = "text-[8px]";
-            showPercent = false;
-          } else {
-            // Too small: blank
-            showName = false;
-            showPercent = false;
-            nameFontSize = "";
-          }
+          // Show logic: need enough space for text to be readable
+          const showName = namePx >= 7;
+          const showPercent = showName && pxH >= 30 && pxW >= 60;
 
           return (
             <div
@@ -539,8 +510,9 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
             >
               {showName && (
                 <span
-                  className={`${nameFontSize} font-bold leading-tight overflow-hidden whitespace-nowrap max-w-[95%]`}
+                  className="font-bold leading-tight overflow-hidden whitespace-nowrap max-w-[95%]"
                   style={{
+                    fontSize: `${namePx}px`,
                     textOverflow: "clip",
                     textShadow: "1px 1px 2px rgba(0,0,0,0.6), 0 0 4px rgba(0,0,0,0.3)",
                   }}
@@ -550,8 +522,11 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
               )}
               {showPercent && (
                 <span
-                  className={`${pctFontSize} tabular-nums font-semibold leading-tight whitespace-nowrap`}
-                  style={{ textShadow: "1px 1px 2px rgba(0,0,0,0.6), 0 0 4px rgba(0,0,0,0.3)" }}
+                  className="tabular-nums font-semibold leading-tight whitespace-nowrap"
+                  style={{
+                    fontSize: `${pctPx}px`,
+                    textShadow: "1px 1px 2px rgba(0,0,0,0.6), 0 0 4px rgba(0,0,0,0.3)",
+                  }}
                 >
                   {pct >= 0 ? "+" : ""}{pct.toFixed(2)}%
                 </span>
