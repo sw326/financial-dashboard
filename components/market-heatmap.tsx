@@ -476,39 +476,37 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
             ? rect.stock.symbol.replace(/\^/, "")
             : rect.stock.name;
 
-          // Responsive font sizing based on actual pixel dimensions
+          // Responsive: use actual pixel width/height of the cell
           const cw = containerSize.w || 1200;
           const ch = containerSize.h || 675;
           const pxW = (rect.w / 100) * cw;
           const pxH = (rect.h / 100) * ch;
-          const pxArea = pxW * pxH;
-          const isNarrow = cw < 500; // mobile/narrow viewport
 
           let nameFontSize: string;
           let pctFontSize = "";
           let showName = true;
-          let showPercent = !isNarrow; // narrow → hide all percentages by default
+          let showPercent = true;
 
-          if (pxArea > 20000) {
-            nameFontSize = isNarrow ? "text-base" : "text-xl";
-            pctFontSize = "text-base";
-            if (isNarrow) showPercent = true; // only show % for very large cells on mobile
-          } else if (pxArea > 10000) {
-            nameFontSize = isNarrow ? "text-sm" : "text-lg";
+          // Width determines if text fits; height determines if 2 lines fit
+          if (pxW >= 120 && pxH >= 50) {
+            nameFontSize = "text-base";
             pctFontSize = "text-sm";
-          } else if (pxArea > 5000) {
-            nameFontSize = isNarrow ? "text-xs" : "text-sm";
+          } else if (pxW >= 80 && pxH >= 36) {
+            nameFontSize = "text-sm";
             pctFontSize = "text-xs";
-          } else if (pxArea > 2500) {
-            nameFontSize = isNarrow ? "text-[10px]" : "text-xs";
+          } else if (pxW >= 55 && pxH >= 28) {
+            nameFontSize = "text-xs";
             pctFontSize = "text-[10px]";
-          } else if (pxArea > 1200) {
+          } else if (pxW >= 40 && pxH >= 22) {
+            // Tight: name only, no percent
             nameFontSize = "text-[10px]";
             showPercent = false;
-          } else if (pxArea > 500) {
+          } else if (pxW >= 25 && pxH >= 14) {
+            // Very tight: tiny name only
             nameFontSize = "text-[8px]";
             showPercent = false;
           } else {
+            // Too small: blank, rely on sector hover
             showName = false;
             showPercent = false;
             nameFontSize = "";
