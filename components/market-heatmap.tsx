@@ -476,41 +476,39 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
             ? rect.stock.symbol.replace(/\^/, "")
             : rect.stock.name;
 
-          // Use actual pixel dimensions for responsive font sizing
-          // Fallback to percentage-based area when container size not yet measured
+          // Responsive font sizing based on actual pixel dimensions
           const cw = containerSize.w || 1200;
           const ch = containerSize.h || 675;
           const pxW = (rect.w / 100) * cw;
           const pxH = (rect.h / 100) * ch;
           const pxArea = pxW * pxH;
+          const isNarrow = cw < 500; // mobile/narrow viewport
 
           let nameFontSize: string;
           let pctFontSize = "";
           let showName = true;
-          let showPercent = true;
+          let showPercent = !isNarrow; // narrow → hide all percentages by default
 
           if (pxArea > 20000) {
-            nameFontSize = "text-xl";
+            nameFontSize = isNarrow ? "text-base" : "text-xl";
             pctFontSize = "text-base";
+            if (isNarrow) showPercent = true; // only show % for very large cells on mobile
           } else if (pxArea > 10000) {
-            nameFontSize = "text-lg";
+            nameFontSize = isNarrow ? "text-sm" : "text-lg";
             pctFontSize = "text-sm";
           } else if (pxArea > 5000) {
-            nameFontSize = "text-sm";
+            nameFontSize = isNarrow ? "text-xs" : "text-sm";
             pctFontSize = "text-xs";
           } else if (pxArea > 2500) {
-            nameFontSize = "text-xs";
+            nameFontSize = isNarrow ? "text-[10px]" : "text-xs";
             pctFontSize = "text-[10px]";
           } else if (pxArea > 1200) {
-            // Small cell: hide percent, show small name only
             nameFontSize = "text-[10px]";
             showPercent = false;
           } else if (pxArea > 500) {
-            // Tiny cell: show very small name only
             nameFontSize = "text-[8px]";
             showPercent = false;
           } else {
-            // Too small: blank, rely on sector hover
             showName = false;
             showPercent = false;
             nameFontSize = "";

@@ -53,17 +53,18 @@ async function fetchSectorFromNaver(code: string): Promise<string | null> {
 // 네이버 API에서 코스피 시총 상위 100개 (ETF 제외)
 async function fetchKrStocks(): Promise<HeatmapStock[]> {
   try {
-    // ETF 제외 후에도 100개 확보하기 위해 넉넉히 가져옴
-    const res = await fetch(
-      `${NAVER_API}/stocks/marketValue?page=1&pageSize=100`,
-      {
-        headers: { "User-Agent": "Mozilla/5.0" },
-        next: { revalidate: 300 },
-      }
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    const stocks = data.stocks || [];
+    // 2페이지 가져와서 ETF 빠진 만큼 보충 (pageSize 최대 100)
+    const fetchOpts = {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      next: { revalidate: 300 },
+    };
+    const [res1, res2] = await Promise.all([
+      fetch(`${NAVER_API}/stocks/marketValue?page=1&pageSize=100`, fetchOpts),
+      fetch(`${NAVER_API}/stocks/marketValue?page=2&pageSize=100`, fetchOpts),
+    ]);
+    const data1 = res1.ok ? await res1.json() : { stocks: [] };
+    const data2 = res2.ok ? await res2.json() : { stocks: [] };
+    const stocks = [...(data1.stocks || []), ...(data2.stocks || [])];
 
     // ETF 필터링: stockEndType이 "stock"인 것만 (etf 제외)
     // fallback: stockEndType 필드 없으면 종목명 prefix로 필터링
