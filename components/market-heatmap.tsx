@@ -487,7 +487,7 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
           const pctPx = namePx * 0.8;
 
           // Show logic: need enough space for text to be readable
-          const showName = namePx >= 7;
+          const showName = namePx >= 10;
           const showPercent = showName && pxH >= 30 && pxW >= 60;
 
           return (
