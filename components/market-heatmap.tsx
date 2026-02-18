@@ -487,26 +487,28 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
           let showName = true;
           let showPercent = true;
 
-          // Width determines if text fits; height determines if 2 lines fit
-          if (pxW >= 120 && pxH >= 50) {
+          // Width/height determines what text can fit without overflow
+          if (pxW >= 160 && pxH >= 60) {
             nameFontSize = "text-base";
             pctFontSize = "text-sm";
-          } else if (pxW >= 80 && pxH >= 36) {
+          } else if (pxW >= 120 && pxH >= 48) {
             nameFontSize = "text-sm";
             pctFontSize = "text-xs";
-          } else if (pxW >= 55 && pxH >= 28) {
+          } else if (pxW >= 90 && pxH >= 40) {
             nameFontSize = "text-xs";
             pctFontSize = "text-[10px]";
-          } else if (pxW >= 40 && pxH >= 22) {
-            // Tight: name only, no percent
+          } else if (pxW >= 65 && pxH >= 30) {
+            // Name only, no percent
+            nameFontSize = "text-xs";
+            showPercent = false;
+          } else if (pxW >= 45 && pxH >= 20) {
             nameFontSize = "text-[10px]";
             showPercent = false;
-          } else if (pxW >= 25 && pxH >= 14) {
-            // Very tight: tiny name only
+          } else if (pxW >= 30 && pxH >= 14) {
             nameFontSize = "text-[8px]";
             showPercent = false;
           } else {
-            // Too small: blank, rely on sector hover
+            // Too small: blank
             showName = false;
             showPercent = false;
             nameFontSize = "";
