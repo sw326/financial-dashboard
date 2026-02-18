@@ -63,12 +63,14 @@ async function fetchKrStocks(): Promise<HeatmapStock[]> {
       }
     );
     if (!res.ok) {
-      console.error("KR heatmap: naver API responded", res.status);
-      return [];
+      const body = await res.text().catch(() => "");
+      throw new Error(`Naver API ${res.status}: ${body.slice(0, 200)}`);
     }
-    const data = await res.json();
+    const rawText = await res.text();
+    if (!rawText) throw new Error("Naver API returned empty body");
+    const data = JSON.parse(rawText);
     const stocks = data.stocks || [];
-    console.log(`KR heatmap: fetched ${stocks.length} stocks, first stockEndType: ${stocks[0]?.stockEndType}`);
+    if (stocks.length === 0) throw new Error(`Naver API returned 0 stocks. Keys: ${Object.keys(data).join(",")}, body: ${rawText.slice(0, 200)}`);
 
     // ETF 필터링: stockEndType이 "stock"인 것만 (etf 제외)
     // fallback: stockEndType 필드 없으면 종목명 prefix로 필터링
