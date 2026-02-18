@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback, useRef } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -209,6 +209,7 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
   const router = useRouter();
   const stocks = response?.stocks || [];
   const containerRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
 
   const [hoveredSector, setHoveredSector] = useState<string | null>(null);
   const [popoverPos, setPopoverPos] = useState({ x: 0, y: 0, side: "right" as "right" | "left", vSide: "down" as "down" | "up" });
@@ -333,8 +334,14 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
         weight: sectorTotalMcap / totalMcap,
       });
     }
-    // 큰 섹터가 좌상단에 오도록 내림차순 정렬
-    sectorGroups.sort((a, b) => b.weight - a.weight);
+    // 큰 섹터가 좌상단에 오도록 내림차순 정렬하되, "기타"는 항상 맨 뒤로
+    sectorGroups.sort((a, b) => {
+      const aIsOther = a.name === "기타" || a.name === "Other";
+      const bIsOther = b.name === "기타" || b.name === "Other";
+      if (aIsOther && !bIsOther) return 1;  // "기타"가 뒤로
+      if (!aIsOther && bIsOther) return -1;
+      return b.weight - a.weight;
+    });
 
     // Level 1: 섹터 레이아웃 (큰 섹터부터 좌상단에 배치)
     const sectorLayout = squarify(sectorGroups, 0, 0, 100, 100);
@@ -377,6 +384,18 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
   }, [stocks]);
 
   sectorRectsRef.current = sectorRects;
+
+  // Track actual pixel size of the heatmap container
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setContainerSize({ w: width, h: height });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   if (isLoading) return <Skeleton className="h-[350px] w-full rounded-lg" />;
   if (stockRects.length === 0) return null;
@@ -435,7 +454,8 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
             >
               <span
                 className={cn(
-                  "text-[9px] sm:text-[11px] font-medium leading-none truncate",
+                  "font-medium leading-none truncate",
+                  (sr.w / 100) * containerSize.w < 60 ? "text-[7px]" : (sr.w / 100) * containerSize.w < 100 ? "text-[9px]" : "text-[11px]",
                   isHovered ? "text-amber-300" : "text-zinc-300"
                 )}
               >
@@ -449,7 +469,6 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
         {stockRects.map((rect) => {
           const pct = rect.stock.changePercent;
           const bg = getHeatmapColor(pct);
-          const area = rect.w * rect.h;
           const isSectorHovered = hoveredSector === (rect.stock.sector || rect.stock.market);
 
           const isUS = !rect.stock.symbol.endsWith(".KS") && !rect.stock.symbol.endsWith(".KQ");
@@ -457,30 +476,38 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
             ? rect.stock.symbol.replace(/\^/, "")
             : rect.stock.name;
 
+          // Use actual pixel dimensions for responsive font sizing
+          const pxW = (rect.w / 100) * containerSize.w;
+          const pxH = (rect.h / 100) * containerSize.h;
+          const pxArea = pxW * pxH;
+
           let nameFontSize: string;
           let pctFontSize = "";
           let showName = true;
           let showPercent = true;
 
-          if (area > 500) {
-            nameFontSize = "text-xl sm:text-2xl";
-            pctFontSize = "text-base sm:text-lg";
-          } else if (area > 300) {
-            nameFontSize = "text-lg sm:text-xl";
-            pctFontSize = "text-sm sm:text-base";
-          } else if (area > 150) {
-            nameFontSize = "text-sm sm:text-base";
-            pctFontSize = "text-xs sm:text-sm";
-          } else if (area > 80) {
-            nameFontSize = "text-xs sm:text-sm";
-            pctFontSize = "text-[10px] sm:text-xs";
-          } else if (area > 30) {
-            nameFontSize = "text-[10px] sm:text-xs";
-            pctFontSize = "text-[9px] sm:text-[10px]";
-          } else if (area > 10) {
-            nameFontSize = "text-[8px] sm:text-[10px]";
+          if (pxArea > 20000) {
+            nameFontSize = "text-xl";
+            pctFontSize = "text-base";
+          } else if (pxArea > 10000) {
+            nameFontSize = "text-lg";
+            pctFontSize = "text-sm";
+          } else if (pxArea > 5000) {
+            nameFontSize = "text-sm";
+            pctFontSize = "text-xs";
+          } else if (pxArea > 2500) {
+            nameFontSize = "text-xs";
+            pctFontSize = "text-[10px]";
+          } else if (pxArea > 1200) {
+            // Small cell: hide percent, show small name only
+            nameFontSize = "text-[10px]";
+            showPercent = false;
+          } else if (pxArea > 500) {
+            // Tiny cell: show very small name only
+            nameFontSize = "text-[8px]";
             showPercent = false;
           } else {
+            // Too small: blank, rely on sector hover
             showName = false;
             showPercent = false;
             nameFontSize = "";

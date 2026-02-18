@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import YahooFinance from "yahoo-finance2";
 import { getKrStockName } from "@/lib/kr-stock-names";
 import { US_SECTORS } from "@/lib/us-sectors";
-import { getKrSector } from "@/lib/kr-sectors";
+import { getKrSector, INDUSTRY_CODE_MAP } from "@/lib/kr-sectors";
 
 const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
-const NAVER_API = "https://m.stock.naver.com/api/stocks";
+const NAVER_API = "https://m.stock.naver.com/api";
 
 interface HeatmapStock {
   symbol: string;
@@ -18,11 +18,41 @@ interface HeatmapStock {
   sector?: string;
 }
 
-// 네이버 API에서 코스피 시총 상위 100개 (업종 매핑은 KRX 하드코딩 사용)
+// 네이버 개별 종목 API에서 업종코드 조회 (캐시 24시간)
+const sectorCache = new Map<string, { sector: string; timestamp: number }>();
+const SECTOR_CACHE_TTL = 24 * 60 * 60 * 1000; // 24시간
+
+async function fetchSectorFromNaver(code: string): Promise<string | null> {
+  // 캐시 확인
+  const cached = sectorCache.get(code);
+  if (cached && Date.now() - cached.timestamp < SECTOR_CACHE_TTL) {
+    return cached.sector;
+  }
+
+  try {
+    const res = await fetch(`${NAVER_API}/stock/${code}/integration`, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const industryCode = data.industryCode;
+    if (industryCode && INDUSTRY_CODE_MAP[industryCode]) {
+      const sector = INDUSTRY_CODE_MAP[industryCode];
+      sectorCache.set(code, { sector, timestamp: Date.now() });
+      return sector;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// 네이버 API에서 코스피 시총 상위 100개 (ETF 제외)
 async function fetchKrStocks(): Promise<HeatmapStock[]> {
   try {
+    // ETF 제외 후에도 100개 확보하기 위해 넉넉히 가져옴
     const res = await fetch(
-      `${NAVER_API}/marketValue?page=1&pageSize=100`,
+      `${NAVER_API}/stocks/marketValue?page=1&pageSize=150`,
       {
         headers: { "User-Agent": "Mozilla/5.0" },
         next: { revalidate: 300 },
@@ -32,8 +62,30 @@ async function fetchKrStocks(): Promise<HeatmapStock[]> {
     const data = await res.json();
     const stocks = data.stocks || [];
 
+    // ETF 필터링: stockEndType이 "stock"인 것만 (etf 제외)
+    const filteredStocks = stocks.filter(
+      (s: { stockEndType?: string }) => s.stockEndType === "stock"
+    );
+
     const results: HeatmapStock[] = [];
-    for (const s of stocks) {
+    // 하드코딩 매핑이 없는 종목들만 API 조회 (병렬 처리)
+    const unmappedCodes: string[] = [];
+    
+    for (const s of filteredStocks.slice(0, 100)) {
+      const code = s.itemCode as string;
+      if (!getKrSector(code)) {
+        unmappedCodes.push(code);
+      }
+    }
+
+    // 매핑 없는 종목들 병렬로 업종 조회 (최대 20개씩)
+    const BATCH_SIZE = 20;
+    for (let i = 0; i < unmappedCodes.length; i += BATCH_SIZE) {
+      const batch = unmappedCodes.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map((code) => fetchSectorFromNaver(code)));
+    }
+
+    for (const s of filteredStocks.slice(0, 100)) {
       const pct = parseFloat(s.fluctuationsRatio || "0");
 
       let mcap = 0;
@@ -44,8 +96,14 @@ async function fetchKrStocks(): Promise<HeatmapStock[]> {
       if (mEok) mcap += parseFloat(mEok[1]) * 1e8;
 
       const code = s.itemCode as string;
-      // KRX 하드코딩 매핑 사용 (네이버 업종 API 대신)
-      const sector = getKrSector(code) || "기타";
+      // 1. 하드코딩 매핑 우선
+      // 2. 없으면 네이버 API에서 조회한 캐시 사용
+      // 3. 그래도 없으면 "기타"
+      let sector = getKrSector(code);
+      if (!sector) {
+        const cached = sectorCache.get(code);
+        sector = cached?.sector || "기타";
+      }
 
       results.push({
         symbol: `${code}.${s.stockExchangeType?.name === "KOSDAQ" ? "KQ" : "KS"}`,
