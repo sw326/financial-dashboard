@@ -482,13 +482,13 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
           const pxW = (rect.w / 100) * cw;
           const pxH = (rect.h / 100) * ch;
 
-          // Dynamic font size: ~height/4 capped by width
-          const namePx = Math.min(pxH * 0.28, pxW * 0.14, 20);
-          const pctPx = namePx * 0.8;
+          // Dynamic font size proportional to cell
+          const namePx = Math.min(pxH * 0.28, pxW * 0.14, 22);
+          const pctPx = Math.min(namePx * 0.75, 14);
 
-          // Show logic: need enough space for text to be readable
-          const showName = namePx >= 10;
-          const showPercent = showName && pxH >= 30 && pxW >= 60;
+          // Sequential hiding: percent first → then name
+          const showPercent = pxH >= 45 && pxW >= 80 && namePx >= 10;
+          const showName = namePx >= 9 && pxW >= 35;
 
           return (
             <div
