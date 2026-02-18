@@ -483,8 +483,11 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
           const pxH = (rect.h / 100) * ch;
 
           // Dynamic font size proportional to cell
-          const namePx = Math.min(pxH * 0.28, pxW * 0.14, 22);
-          const pctPx = Math.min(namePx * 0.75, 14);
+          // Clamp: name can't exceed 40% of cell height or 18% of width
+          const rawName = Math.min(pxH * 0.3, pxW * 0.15, 22);
+          // Further reduce on small cells to avoid overflow
+          const namePx = pxW < 80 ? rawName * 0.7 : rawName;
+          const pctPx = Math.min(namePx * 0.75, 13);
 
           // Sequential hiding: percent first → then name
           const showPercent = pxH >= 45 && pxW >= 80 && namePx >= 10;
