@@ -6,7 +6,6 @@ import { getKrSector, INDUSTRY_CODE_MAP } from "@/lib/kr-sectors";
 
 // Run in Seoul to access Naver API (blocks non-KR IPs)
 export const preferredRegion = "icn1";
-export const dynamic = "force-dynamic";
 
 const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
@@ -56,21 +55,15 @@ async function fetchKrStocks(): Promise<HeatmapStock[]> {
   try {
     // ETF 제외 후에도 100개 확보하기 위해 넉넉히 가져옴
     const res = await fetch(
-      `${NAVER_API}/stocks/marketValue?page=1&pageSize=150`,
+      `${NAVER_API}/stocks/marketValue?page=1&pageSize=100`,
       {
-        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
-        cache: "no-store",
+        headers: { "User-Agent": "Mozilla/5.0" },
+        next: { revalidate: 300 },
       }
     );
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      throw new Error(`Naver API ${res.status}: ${body.slice(0, 200)}`);
-    }
-    const rawText = await res.text();
-    if (!rawText) throw new Error("Naver API returned empty body");
-    const data = JSON.parse(rawText);
+    if (!res.ok) return [];
+    const data = await res.json();
     const stocks = data.stocks || [];
-    if (stocks.length === 0) throw new Error(`Naver API returned 0 stocks. Keys: ${Object.keys(data).join(",")}, body: ${rawText.slice(0, 200)}`);
 
     // ETF 필터링: stockEndType이 "stock"인 것만 (etf 제외)
     // fallback: stockEndType 필드 없으면 종목명 prefix로 필터링
@@ -132,8 +125,7 @@ async function fetchKrStocks(): Promise<HeatmapStock[]> {
     return results;
   } catch (e) {
     console.error("KR heatmap error:", e);
-    // Re-throw so caller can see the error in _debug
-    throw e;
+    return [];
   }
 }
 
@@ -187,33 +179,18 @@ export async function GET(request: NextRequest) {
   const market = request.nextUrl.searchParams.get("market") || "all";
 
   try {
-    let krError: string | null = null;
-    let usError: string | null = null;
-    let krStocks: HeatmapStock[] = [];
-    let usStocks: HeatmapStock[] = [];
-
-    try {
-      krStocks = market === "us" ? [] : await fetchKrStocks();
-    } catch (e) {
-      krError = String(e);
-    }
-    try {
-      usStocks = market === "kr" ? [] : await fetchUsStocks();
-    } catch (e) {
-      usError = String(e);
-    }
+    const [krStocks, usStocks] = await Promise.all([
+      market === "us" ? Promise.resolve([]) : fetchKrStocks(),
+      market === "kr" ? Promise.resolve([]) : fetchUsStocks(),
+    ]);
 
     const stocks = [...krStocks, ...usStocks].sort(
       (a, b) => b.marketCap - a.marketCap
     );
 
-    return NextResponse.json({
-      stocks,
-      total: stocks.length,
-      _debug: { krCount: krStocks.length, usCount: usStocks.length, krError, usError },
-    });
+    return NextResponse.json({ stocks, total: stocks.length });
   } catch (error) {
     console.error("Heatmap API error:", error);
-    return NextResponse.json({ error: "Failed", _debug: String(error) }, { status: 500 });
+    return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }
