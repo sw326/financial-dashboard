@@ -59,7 +59,7 @@ async function fetchKrStocks(): Promise<HeatmapStock[]> {
       `${NAVER_API}/stocks/marketValue?page=1&pageSize=150`,
       {
         headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
-        next: { revalidate: 60 },
+        cache: "no-store",
       }
     );
     if (!res.ok) {
