@@ -6,6 +6,7 @@ import { getKrSector, INDUSTRY_CODE_MAP } from "@/lib/kr-sectors";
 
 // Run in Seoul to access Naver API (blocks non-KR IPs)
 export const preferredRegion = "icn1";
+export const dynamic = "force-dynamic";
 
 const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
@@ -57,8 +58,8 @@ async function fetchKrStocks(): Promise<HeatmapStock[]> {
     const res = await fetch(
       `${NAVER_API}/stocks/marketValue?page=1&pageSize=150`,
       {
-        headers: { "User-Agent": "Mozilla/5.0" },
-        next: { revalidate: 300 },
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
+        next: { revalidate: 60 },
       }
     );
     if (!res.ok) {
