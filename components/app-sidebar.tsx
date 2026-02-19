@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   BarChart3,
   Building2,
+  MessageSquare,
   Wallet,
 } from "lucide-react"
 
@@ -49,6 +50,16 @@ const navGroups = [
         title: "부동산",
         url: "/real-estate",
         icon: Building2,
+      },
+    ],
+  },
+  {
+    label: "AI",
+    items: [
+      {
+        title: "채팅",
+        url: "/chat",
+        icon: MessageSquare,
       },
     ],
   },
