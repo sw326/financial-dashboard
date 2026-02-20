@@ -32,20 +32,10 @@ interface Conversation {
 
 const navGroups = [
   {
-    label: "메인",
+    label: "대시보드",
     items: [
       { title: "대시보드", url: "/", icon: LayoutDashboard },
-    ],
-  },
-  {
-    label: "증시",
-    items: [
       { title: "증시", url: "/market", icon: BarChart3 },
-    ],
-  },
-  {
-    label: "부동산",
-    items: [
       { title: "부동산", url: "/real-estate", icon: Building2 },
     ],
   },
