@@ -44,7 +44,7 @@ export default function ChatPage() {
   }, [sendMessage, messages.length, router]);
 
   return (
-    <>
+    <div className="flex flex-col flex-1 min-h-0">
       {error && (
         <div className="px-4 py-2 bg-destructive/10 text-destructive text-sm text-center">
           {error}
@@ -57,6 +57,6 @@ export default function ChatPage() {
       )}
       <ChatMessages messages={messages} streaming={streaming} isLoading={isLoading} />
       <ChatInput onSend={handleSend} disabled={status !== "connected"} />
-    </>
+    </div>
   );
 }

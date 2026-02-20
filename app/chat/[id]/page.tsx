@@ -46,7 +46,7 @@ export default function ChatConversationPage() {
   }, [messages.length, id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <>
+    <div className="flex flex-col flex-1 min-h-0">
       {error && (
         <div className="px-4 py-2 bg-destructive/10 text-destructive text-sm text-center">
           {error}
@@ -59,6 +59,6 @@ export default function ChatConversationPage() {
       )}
       <ChatMessages messages={messages} streaming={streaming} isLoading={isLoading} />
       <ChatInput onSend={handleSend} disabled={status !== "connected"} />
-    </>
+    </div>
   );
 }
