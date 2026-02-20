@@ -4,11 +4,9 @@ import { ChatMessages } from "@/components/chat/chat-messages";
 import { ChatInput } from "@/components/chat/chat-input";
 import { useGatewayChat } from "@/hooks/use-gateway-chat";
 import { supabase } from "@/lib/supabase";
-import { useRouter } from "next/navigation";
 import { useCallback, useRef } from "react";
 
 export default function ChatPage() {
-  const router = useRouter();
   const { messages, streaming, isLoading, error, sendMessage } = useGatewayChat("webchat");
   const convIdRef = useRef<string | null>(null);
 
@@ -24,7 +22,8 @@ export default function ChatPage() {
           .single();
         if (data) {
           convIdRef.current = data.id;
-          router.push(`/chat/${data.id}`);
+          // 컴포넌트 unmount 없이 URL만 업데이트 (SSE 스트림 유지)
+          window.history.pushState({}, "", `/chat/${data.id}`);
         }
       } catch {
         // Supabase 연결 없이도 채팅 가능
