@@ -1,15 +1,9 @@
 import { NextRequest } from "next/server";
-import WebSocket from "ws";
 
-const GATEWAY_URL = process.env.GATEWAY_URL || "wss://desktop-76g4sk0.tailcfd4f8.ts.net";
+const GATEWAY_URL = (process.env.GATEWAY_URL || "https://desktop-76g4sk0.tailcfd4f8.ts.net").replace(/^wss?:\/\//, "https://");
 const GATEWAY_TOKEN = process.env.GATEWAY_TOKEN || "";
 
-let idCounter = 0;
-function genId() {
-  return `srv_${Date.now()}_${++idCounter}`;
-}
-
-export const maxDuration = 60; // Vercel Pro: 60s timeout
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   const { message, sessionKey = "webchat", conversationId } = await req.json();
@@ -18,160 +12,83 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ error: "message required" }), { status: 400 });
   }
 
+  const body = {
+    model: "openclaw:main",
+    input: message.trim(),
+    stream: true,
+    user: sessionKey,
+    ...(conversationId && { metadata: { conversationId } }),
+  };
+
+  const upstream = await fetch(`${GATEWAY_URL}/v1/responses`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${GATEWAY_TOKEN}`,
+      "x-openclaw-session-key": sessionKey,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!upstream.ok) {
+    const err = await upstream.text();
+    return new Response(JSON.stringify({ error: err }), { status: upstream.status });
+  }
+
+  // SSE 스트림을 클라이언트에 그대로 relay
   const stream = new ReadableStream({
     async start(controller) {
-      const send = (data: object) => {
-        controller.enqueue(`data: ${JSON.stringify(data)}\n\n`);
-      };
-
-      let ws: WebSocket | null = null;
-      let done = false;
-
-      const cleanup = () => {
-        done = true;
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.close();
-        }
-      };
+      const reader = upstream.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
 
       try {
-        ws = new WebSocket(GATEWAY_URL, {
-          headers: {
-            Origin: "https://desktop-76g4sk0.tailcfd4f8.ts.net",
-          },
-        });
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => reject(new Error("Connection timeout")), 10000);
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
 
-          ws!.on("open", () => clearTimeout(timeout));
-          ws!.on("error", (err) => {
-            clearTimeout(timeout);
-            reject(err);
-          });
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const jsonStr = line.slice(6).trim();
+            if (jsonStr === "[DONE]") {
+              controller.enqueue(`data: ${JSON.stringify({ type: "done" })}\n\n`);
+              continue;
+            }
 
-          let connected = false;
-          const idempotencyKey = genId();
-
-          ws!.on("message", async (raw) => {
-            if (done) return;
-            let data: Record<string, unknown>;
+            let event: Record<string, unknown>;
             try {
-              data = JSON.parse(raw.toString());
+              event = JSON.parse(jsonStr);
             } catch {
-              return;
+              continue;
             }
 
-            // 1) connect.challenge → send connect handshake
-            if (data.type === "event" && data.event === "connect.challenge" && !connected) {
-              const connectReq = {
-                type: "req",
-                id: genId(),
-                method: "connect",
-                params: {
-                  minProtocol: 3,
-                  maxProtocol: 3,
-                  client: {
-                    id: "webchat",
-                    version: "1.0",
-                    platform: "server",
-                    mode: "webchat",
-                    instanceId: genId(),
-                  },
-                  role: "operator",
-                  scopes: ["operator.read", "operator.write"],
-                  caps: [],
-                  auth: { token: GATEWAY_TOKEN, password: "" },
-                  userAgent: "financial-dashboard-server/1.0",
-                  locale: "ko",
-                },
-              };
-              ws!.send(JSON.stringify(connectReq));
-              return;
+            // OpenResponses 이벤트 → 클라이언트 형식으로 변환
+            const evType = event.type as string;
+
+            if (evType === "response.output_text.delta") {
+              controller.enqueue(
+                `data: ${JSON.stringify({ type: "delta", text: event.delta })}\n\n`
+              );
+            } else if (evType === "response.output_text.done") {
+              // 전체 텍스트 완성
+              controller.enqueue(
+                `data: ${JSON.stringify({ type: "final", content: event.text, conversationId })}\n\n`
+              );
+            } else if (evType === "response.failed" || evType === "error") {
+              controller.enqueue(
+                `data: ${JSON.stringify({ type: "error", error: event.message || "응답 오류" })}\n\n`
+              );
             }
-
-            // 2) connect response
-            if (data.type === "res" && !connected) {
-              if (!data.ok) {
-                const errMsg = (data.error as { message?: string })?.message || "connect failed";
-                send({ type: "error", error: errMsg });
-                cleanup();
-                resolve();
-                return;
-              }
-              connected = true;
-
-              // 3) send chat.send
-              const chatReq = {
-                type: "req",
-                id: genId(),
-                method: "chat.send",
-                params: {
-                  sessionKey,
-                  message: message.trim(),
-                  deliver: false,
-                  idempotencyKey,
-                },
-              };
-              ws!.send(JSON.stringify(chatReq));
-              return;
-            }
-
-            // 4) chat events (streaming response)
-            if (data.type === "event" && data.event === "chat") {
-              const payload = data.payload as {
-                state?: string;
-                message?: { role?: string; content?: string | Array<{ type: string; text?: string }> };
-                sessionKey?: string;
-              };
-              if (!payload) return;
-              if (payload.sessionKey && !payload.sessionKey.endsWith(sessionKey)) return;
-
-              if (payload.state === "delta" && payload.message) {
-                let text = "";
-                const msg = payload.message;
-                if (typeof msg.content === "string") {
-                  text = msg.content;
-                } else if (Array.isArray(msg.content)) {
-                  text = msg.content
-                    .filter((p): p is { type: string; text: string } => p.type === "text" && typeof p.text === "string")
-                    .map((p) => p.text)
-                    .join("");
-                }
-                send({ type: "delta", text });
-              } else if (payload.state === "final") {
-                let content = "";
-                if (payload.message) {
-                  const msg = payload.message;
-                  if (typeof msg.content === "string") {
-                    content = msg.content;
-                  } else if (Array.isArray(msg.content)) {
-                    content = msg.content
-                      .filter((p): p is { type: string; text: string } => p.type === "text" && typeof p.text === "string")
-                      .map((p) => p.text)
-                      .join("");
-                  }
-                }
-                send({ type: "final", content, conversationId });
-                cleanup();
-                resolve();
-              } else if (payload.state === "error" || payload.state === "aborted") {
-                send({ type: "error", error: payload.state === "error" ? "응답 오류" : "응답 중단" });
-                cleanup();
-                resolve();
-              }
-            }
-          });
-
-          ws!.on("close", () => {
-            if (!done) {
-              send({ type: "error", error: "연결 끊김" });
-              resolve();
-            }
-          });
-        });
+          }
+        }
       } catch (err) {
-        send({ type: "error", error: String(err) });
+        controller.enqueue(
+          `data: ${JSON.stringify({ type: "error", error: String(err) })}\n\n`
+        );
       }
 
       controller.close();
