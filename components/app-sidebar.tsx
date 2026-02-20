@@ -52,8 +52,7 @@ export function AppSidebar() {
   const isOnChat = pathname.startsWith("/chat")
   const [conversations, setConversations] = React.useState<Conversation[]>([])
 
-  React.useEffect(() => {
-    if (!isOnChat) return
+  const loadConversations = React.useCallback(() => {
     supabase
       .from("conversations")
       .select("id, title, updated_at")
@@ -62,7 +61,20 @@ export function AppSidebar() {
       .then(({ data }) => {
         if (data) setConversations(data)
       })
-  }, [isOnChat, pathname])
+  }, [])
+
+  React.useEffect(() => {
+    if (!isOnChat) return
+    loadConversations()
+
+    // Supabase realtime — 새 대화 추가 시 자동 갱신
+    const channel = supabase
+      .channel("conversations-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, loadConversations)
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [isOnChat, loadConversations])
 
   return (
     <Sidebar>
