@@ -31,7 +31,7 @@ export default function ChatPage() {
     }
 
     sendMessage(text, convIdRef.current ?? undefined);
-  }, [sendMessage, messages.length, router]);
+  }, [sendMessage, messages.length]);
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
