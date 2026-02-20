@@ -115,7 +115,7 @@ export function useGatewayChat(gatewayUrl: string, token: string) {
           instanceId: genId(),
         },
         role: "operator",
-        scopes: [],
+        scopes: ["operator.read", "operator.write"],
         caps: [],
         auth: { token, password: "" },
         userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "financial-dashboard",
