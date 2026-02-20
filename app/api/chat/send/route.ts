@@ -35,7 +35,11 @@ export async function POST(req: NextRequest) {
       };
 
       try {
-        ws = new WebSocket(GATEWAY_URL);
+        ws = new WebSocket(GATEWAY_URL, {
+          headers: {
+            Origin: "https://desktop-76g4sk0.tailcfd4f8.ts.net",
+          },
+        });
 
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => reject(new Error("Connection timeout")), 10000);
