@@ -14,8 +14,8 @@ function genId() {
   return `msg_${Date.now()}_${++idCounter}`;
 }
 
-export function useGatewayChat(sessionKey: string = "webchat") {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+export function useGatewayChat(sessionKey: string = "webchat", initialMessages: ChatMessage[] = []) {
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [streaming, setStreaming] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -126,5 +126,6 @@ export function useGatewayChat(sessionKey: string = "webchat") {
     error,
     sendMessage,
     clearMessages,
+    setMessages,
   };
 }
