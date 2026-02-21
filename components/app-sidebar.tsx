@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   LayoutDashboard,
@@ -10,6 +10,7 @@ import {
   MessageSquare,
   Wallet,
   Plus,
+  Trash2,
 } from "lucide-react"
 
 import {
@@ -49,8 +50,10 @@ const navGroups = [
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const isOnChat = pathname.startsWith("/chat")
   const [conversations, setConversations] = React.useState<Conversation[]>([])
+  const [deletingId, setDeletingId] = React.useState<string | null>(null)
 
   const loadConversations = React.useCallback(() => {
     supabase
@@ -67,7 +70,6 @@ export function AppSidebar() {
     if (!isOnChat) return
     loadConversations()
 
-    // Supabase realtime — 새 대화 추가 시 자동 갱신
     const channel = supabase
       .channel("conversations-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, loadConversations)
@@ -75,6 +77,22 @@ export function AppSidebar() {
 
     return () => { supabase.removeChannel(channel) }
   }, [isOnChat, loadConversations])
+
+  const handleDelete = React.useCallback(async (e: React.MouseEvent, convId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDeletingId(convId)
+    try {
+      await supabase.from("conversations").delete().eq("id", convId)
+      setConversations((prev) => prev.filter((c) => c.id !== convId))
+      // 삭제한 대화방에 있었으면 새 채팅으로
+      if (pathname === `/chat/${convId}`) {
+        router.push("/chat")
+      }
+    } finally {
+      setDeletingId(null)
+    }
+  }, [pathname, router])
 
   return (
     <Sidebar>
@@ -95,7 +113,6 @@ export function AppSidebar() {
                 {group.items.map((item) => {
                   const Icon = item.icon
                   const isActive = pathname === item.url
-
                   return (
                     <SidebarMenuItem key={item.url}>
                       <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
@@ -114,27 +131,40 @@ export function AppSidebar() {
 
         {isOnChat && (
           <SidebarGroup>
-            <SidebarGroupLabel>대화 목록</SidebarGroupLabel>
+            <SidebarGroupLabel className="flex items-center justify-between pr-1">
+              <span>대화 목록</span>
+              <Link
+                href="/chat"
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                <Plus className="h-3 w-3" />
+                새 채팅
+              </Link>
+            </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname === "/chat"} tooltip="새 대화">
-                    <Link href="/chat">
-                      <Plus className="h-4 w-4" />
-                      <span>새 대화</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                {conversations.length === 0 && (
+                  <p className="px-2 py-3 text-xs text-muted-foreground">대화 내역이 없어요</p>
+                )}
                 {conversations.map((conv) => (
-                  <SidebarMenuItem key={conv.id}>
+                  <SidebarMenuItem key={conv.id} className="group/item">
                     <SidebarMenuButton
                       asChild
                       isActive={pathname === `/chat/${conv.id}`}
                       tooltip={conv.title || "새 대화"}
+                      className="pr-1"
                     >
-                      <Link href={`/chat/${conv.id}`}>
-                        <MessageSquare className="h-4 w-4" />
-                        <span className="truncate">{conv.title || "새 대화"}</span>
+                      <Link href={`/chat/${conv.id}`} className="flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4 shrink-0" />
+                        <span className="truncate flex-1">{conv.title || "새 대화"}</span>
+                        <button
+                          onClick={(e) => handleDelete(e, conv.id)}
+                          disabled={deletingId === conv.id}
+                          className="opacity-0 group-hover/item:opacity-100 shrink-0 p-0.5 rounded hover:text-destructive transition-all"
+                          aria-label="대화 삭제"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
