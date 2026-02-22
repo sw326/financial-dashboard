@@ -49,19 +49,20 @@ export default function ChatConversationPage() {
     sendMessage(text, id);
   }, [sendMessage, id]);
 
-  // 새 assistant 메시지 Supabase 저장
+  // 새 assistant 메시지 Supabase 저장 (streaming 완료 후에만)
   useEffect(() => {
+    if (streaming) return; // 스트리밍 중엔 저장 안 함 (중복 방지)
     const lastMsg = messages[messages.length - 1];
     if (!lastMsg || lastMsg.role !== "assistant") return;
     if (savedMsgIds.current.has(lastMsg.id)) return;
-    savedMsgIds.current.add(lastMsg.id);
+    savedMsgIds.current.add(lastMsg.id); // 비동기 저장 전에 마킹 (재진입 방지)
 
     supabase.from("messages").insert({
       conversation_id: id,
       role: "assistant",
       content: lastMsg.content,
     }).then(() => {});
-  }, [messages, id]);
+  }, [messages, streaming, id]);
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
