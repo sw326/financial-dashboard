@@ -11,9 +11,9 @@ const VP_H = 740;             // 범례 영역 포함
 const MAP_H = 645;            // 실제 히트맵 높이 (하단 여백 확보)
 const LEGEND_Y = 700;         // 범례 중심 Y (MAP_H와 55px 간격)
 const SECTOR_GAP = 2;
-const HEADER_H = 20;
+const HEADER_H = 24;
 const HEADER_MIN_W = 50;
-const HEADER_MIN_H = 32;
+const HEADER_MIN_H = 36;
 const CARD_SPACE_RIGHT = 22; // 팝오버 우측 공간 최소 %
 const CARD_SPACE_BELOW = 35; // 팝오버 하단 공간 최소 %
 
@@ -353,7 +353,7 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
             if (!show) return null;
             const isHov = hovered === sr.name;
             // 섹터 너비에 따라 폰트 크기 조절
-            const fs = sr.w < 90 ? 9 : sr.w < 160 ? 11 : 13;
+            const fs = 12; // 모든 섹터 헤더 동일 크기
             return (
               <g
                 key={`hdr-${sr.name}`}
