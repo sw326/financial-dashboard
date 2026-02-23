@@ -7,11 +7,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 // ─── 고정 SVG 뷰포트 (이미지처럼 비율 유지, ResizeObserver 불필요) ───
 const VP_W = 1200;
-const VP_H = 675;
-const SECTOR_GAP = 2;       // 섹터 간 간격 (px)
-const HEADER_H = 24;         // 섹터 헤더 높이 (px)
+const VP_H = 720;             // 범례 영역 포함 (히트맵 675 + 하단 45)
+const MAP_H = 675;            // 실제 히트맵 높이
+const LEGEND_Y = 683;         // 범례 Y 시작점
+const SECTOR_GAP = 2;
+const HEADER_H = 32;
 const HEADER_MIN_W = 50;
-const HEADER_MIN_H = 36;
+const HEADER_MIN_H = 44;
 const CARD_SPACE_RIGHT = 22; // 팝오버 우측 공간 최소 %
 const CARD_SPACE_BELOW = 35; // 팝오버 하단 공간 최소 %
 
@@ -164,9 +166,9 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
   const positionPopover = useCallback((name: string) => {
     const sr = sectorRectsRef.current.find(r => r.name === name);
     if (!sr) return;
-    // SVG 픽셀 → CSS % 변환
+    // SVG 픽셀 → CSS % 변환 (히트맵 영역 기준)
     const sx = (sr.x / VP_W) * 100, sy = (sr.y / VP_H) * 100;
-    const sw = (sr.w / VP_W) * 100, sh = (sr.h / VP_H) * 100;
+    const sw = (sr.w / VP_W) * 100, sh = (sr.h / VP_H) * 100;  // VP_H 유지 (비율 OK)
     const goRight = 100 - (sx + sw) > CARD_SPACE_RIGHT;
     const goDown = 100 - (sy + sh) > CARD_SPACE_BELOW;
     setPopover({
@@ -202,7 +204,7 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
                        .sort((a, b) => b.weight - a.weight);
       return {
         sectorRects: [],
-        stockRects: squarify(ws, 0, 0, VP_W, VP_H).map(r => ({ x: r.x, y: r.y, w: r.w, h: r.h, stock: r.item })),
+        stockRects: squarify(ws, 0, 0, VP_W, MAP_H).map(r => ({ x: r.x, y: r.y, w: r.w, h: r.h, stock: r.item })),
       };
     }
 
@@ -224,7 +226,7 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
       return b.weight - a.weight;
     });
 
-    const layout = squarify(groups, 0, 0, VP_W, VP_H);
+    const layout = squarify(groups, 0, 0, VP_W, MAP_H);
     const finalSectors: SectorRect[] = [];
     const finalStocks: StockRect[] = [];
 
@@ -263,8 +265,8 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
   if (!stockRects.length) return null;
 
   return (
-    <div className="space-y-2">
-      {/* SVG 뷰포트 고정 — 화면 축소 시 이미지처럼 비율 유지 */}
+    <div>
+      {/* SVG 뷰포트 고정 — 화면 축소 시 이미지처럼 비율 유지 (범례 포함) */}
       <div className="relative">
         <svg
           viewBox={`0 0 ${VP_W} ${VP_H}`}
@@ -272,6 +274,8 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
           style={{ display: "block" }}
           className="bg-zinc-900 rounded-lg"
         >
+          {/* 히트맵 배경 */}
+          <rect x={0} y={0} width={VP_W} height={MAP_H} fill="#18181b" />
           <defs>
             {stockRects.map(r => (
               <clipPath key={`cp-${r.stock.symbol}`} id={`cp-${r.stock.symbol}`}>
@@ -349,7 +353,7 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
             if (!show) return null;
             const isHov = hovered === sr.name;
             // 섹터 너비에 따라 폰트 크기 조절
-            const fs = sr.w < 80 ? 9 : sr.w < 160 ? 12 : sr.w < 280 ? 15 : sr.w < 450 ? 18 : 22;
+            const fs = sr.w < 80 ? 10 : sr.w < 160 ? 14 : sr.w < 280 ? 20 : sr.w < 450 ? 27 : 36;
             return (
               <g
                 key={`hdr-${sr.name}`}
@@ -394,6 +398,37 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
               style={{ pointerEvents: "none" }}
             />
           ))}
+          {/* ── SVG 내부 범례 + 데이터 설명 (모바일도 비율 유지) ── */}
+          {/* 구분선 */}
+          <line x1={0} y1={MAP_H + 4} x2={VP_W} y2={MAP_H + 4} stroke="#3f3f46" strokeWidth={1} />
+
+          {/* 좌측: 데이터 기준 설명 */}
+          <text x={8} y={LEGEND_Y + 4} dominantBaseline="middle" fill="#71717a" fontSize={14} fontWeight="400">
+            {market === "kr" ? "KOSPI · KOSDAQ" : "S&P 500"}
+          </text>
+          <text x={8} y={LEGEND_Y + 20} dominantBaseline="middle" fill="#52525b" fontSize={12} fontWeight="400">
+            시가총액 기준
+          </text>
+
+          {/* 우측: 색상 범례 */}
+          {LEGEND.map((item, i) => {
+            const bw = 70; // 각 블록 너비
+            const bh = 28; // 각 블록 높이
+            const x = VP_W - LEGEND.length * bw + i * bw;
+            const y = LEGEND_Y - bh / 2;
+            return (
+              <g key={item.label}>
+                <rect x={x} y={y} width={bw} height={bh} fill={item.color} />
+                <text
+                  x={x + bw / 2} y={y + bh / 2}
+                  textAnchor="middle" dominantBaseline="middle"
+                  fill="white" fontSize={13} fontWeight="500"
+                >
+                  {item.label}
+                </text>
+              </g>
+            );
+          })}
         </svg>
 
         {/* ── 섹터 팝오버 (HTML 오버레이) ── */}
@@ -410,28 +445,7 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
         )}
       </div>
 
-      {/* ── 범례 + 데이터 설명 ── */}
-      <div className="flex items-center justify-between gap-2">
-        {/* 좌측: 데이터 기준 설명 */}
-        <p className="text-[11px] text-muted-foreground leading-snug shrink-0">
-          {market === "kr"
-            ? <>KOSPI · KOSDAQ<br /><span className="text-muted-foreground/70">시가총액 기준</span></>
-            : <>S&amp;P 500<br /><span className="text-muted-foreground/70">시가총액 기준</span></>
-          }
-        </p>
-        {/* 우측: 색상 범례 */}
-        <div className="flex items-center">
-          {LEGEND.map(item => (
-            <div
-              key={item.label}
-              className="px-3 py-1 text-xs font-medium text-white tabular-nums"
-              style={{ backgroundColor: item.color, textShadow: "1px 1px 1px rgba(0,0,0,0.5)" }}
-            >
-              {item.label}
-            </div>
-          ))}
-        </div>
-      </div>
+
     </div>
   );
 }
