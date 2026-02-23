@@ -38,7 +38,11 @@ export function ChatSidebar() {
 
     loadConversations();
 
-    // 실시간 구독 — conversations 변경 시 자동 갱신
+    // 방법 1: CustomEvent — 같은 탭에서 대화 생성 시 즉시 반영
+    const handleNewConv = () => loadConversations();
+    window.addEventListener("conversationCreated", handleNewConv);
+
+    // 방법 2: Supabase Realtime — 다른 탭/기기에서 변경 시 반영
     const channel = supabase
       .channel("sidebar-conversations")
       .on(
@@ -48,7 +52,10 @@ export function ChatSidebar() {
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      window.removeEventListener("conversationCreated", handleNewConv);
+      supabase.removeChannel(channel);
+    };
   }, [isLoggedIn, loadConversations]);
 
   // 새 대화: pushState로 URL이 변경된 상태일 수 있으므로 window.location으로 완전 이동

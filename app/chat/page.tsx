@@ -44,6 +44,8 @@ export default function ChatPage() {
           if (data) {
             convIdRef.current = data.id;
             window.history.replaceState({}, "", `/chat/${data.id}`);
+            // 사이드바 즉시 갱신 트리거
+            window.dispatchEvent(new CustomEvent("conversationCreated"));
           }
         } catch (e) {
           console.error("[chat] conversation create failed:", e);
