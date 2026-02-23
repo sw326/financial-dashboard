@@ -9,7 +9,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 import SearchCommand from "@/components/search-command";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthButton } from "@/components/auth-button"
-import { Toaster } from "sonner";
+import { Toaster } from "sonner"
+import { BarChart3, Building2, MessageSquare } from "lucide-react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -65,10 +66,21 @@ export default async function RootLayout({
                   <div className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <div className="flex h-14 items-center px-4 gap-2">
                       <SidebarTrigger />
-                      <nav className="flex items-center gap-1 ml-1">
-                        <a href="/market" className="px-3 py-1.5 text-sm font-medium rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">주식</a>
-                        <a href="/real-estate" className="px-3 py-1.5 text-sm font-medium rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">부동산</a>
-                        <a href="/chat" className="px-3 py-1.5 text-sm font-medium rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">채팅</a>
+                      <nav className="flex items-center gap-0.5 ml-1">
+                        {[
+                          { href: "/market",      icon: BarChart3,     label: "주식" },
+                          { href: "/real-estate", icon: Building2,     label: "부동산" },
+                          { href: "/chat",        icon: MessageSquare, label: "채팅" },
+                        ].map(({ href, icon: Icon, label }) => (
+                          <a
+                            key={href}
+                            href={href}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                          >
+                            <Icon className="h-4 w-4 shrink-0" />
+                            <span className="hidden sm:inline">{label}</span>
+                          </a>
+                        ))}
                       </nav>
                       <div className="flex-1" />
                       <div className="w-64">
