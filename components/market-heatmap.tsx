@@ -11,9 +11,9 @@ const VP_H = 740;             // 범례 영역 포함
 const MAP_H = 645;            // 실제 히트맵 높이 (하단 여백 확보)
 const LEGEND_Y = 700;         // 범례 중심 Y (MAP_H와 55px 간격)
 const SECTOR_GAP = 2;
-const HEADER_H = 32;
+const HEADER_H = 20;
 const HEADER_MIN_W = 50;
-const HEADER_MIN_H = 44;
+const HEADER_MIN_H = 32;
 const CARD_SPACE_RIGHT = 22; // 팝오버 우측 공간 최소 %
 const CARD_SPACE_BELOW = 35; // 팝오버 하단 공간 최소 %
 
@@ -294,8 +294,8 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
             const isHovered = hovered === sec;
 
             // 셀 크기 기반 텍스트 크기 (SVG 픽셀 = 뷰포트 픽셀 → 스케일 무관)
-            const namePx = Math.min(rect.w * 0.13, rect.h * 0.28, 18);
-            const pctPx  = Math.min(namePx * 0.78, 13);
+            const namePx = Math.min(rect.w * 0.20, rect.h * 0.38, 32);
+            const pctPx  = Math.min(namePx * 0.72, 20);
             const showName = namePx >= 9 && rect.w >= 38;
             const showPct  = pctPx >= 7 && rect.h >= 28 && rect.w >= 32;
 
@@ -353,7 +353,7 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
             if (!show) return null;
             const isHov = hovered === sr.name;
             // 섹터 너비에 따라 폰트 크기 조절
-            const fs = sr.w < 80 ? 10 : sr.w < 160 ? 14 : sr.w < 280 ? 20 : sr.w < 450 ? 27 : 36;
+            const fs = sr.w < 90 ? 9 : sr.w < 160 ? 11 : 13;
             return (
               <g
                 key={`hdr-${sr.name}`}
