@@ -26,19 +26,22 @@ async function buildPersonalizedContext(userId: string): Promise<string | null> 
 }
 
 export async function POST(req: NextRequest) {
-  const { message, sessionKey = "webchat", conversationId } = await req.json();
+  const { message, sessionKey: clientSessionKey, conversationId } = await req.json();
 
   if (!message?.trim()) {
     return new Response(JSON.stringify({ error: "message required" }), { status: 400 });
   }
 
-  // 로그인 유저 확인 + 개인화 컨텍스트
+  // 로그인 유저 확인 + 개인화 컨텍스트 + 세션 키 결정
   let systemContext: string | null = null;
+  let sessionKey = clientSessionKey || "webchat";
 
   try {
     const supabase = await createSupabaseServer();
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      // 인증 유저: webchat:{userId} → 푸시 서버 타겟 매핑 가능
+      sessionKey = `webchat:${user.id}`;
       systemContext = await buildPersonalizedContext(user.id);
     }
   } catch { /* 인증 실패 시 비회원으로 진행 */ }

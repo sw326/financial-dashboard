@@ -5,10 +5,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, MessageSquare, Wallet, ArrowLeft, LogIn } from "lucide-react";
+import { Plus, MessageSquare, Wallet, ArrowLeft, LogIn, Bell, BellOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/use-auth";
+import { usePushNotification } from "@/hooks/use-push-notification";
 
 interface Conversation {
   id: string;
@@ -20,6 +21,7 @@ export function ChatSidebar() {
   const pathname = usePathname();
   const { isLoggedIn, isLoading } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const { isSupported, isSubscribed, isLoading: pushLoading, subscribe, unsubscribe } = usePushNotification();
 
   const loadConversations = useCallback(async () => {
     const { data } = await supabase
@@ -73,15 +75,29 @@ export function ChatSidebar() {
             <span>대시보드</span>
           </Link>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full justify-start gap-2"
-          onClick={handleNewChat}
-        >
-          <Plus className="h-4 w-4" />
-          새 대화
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 justify-start gap-2"
+            onClick={handleNewChat}
+          >
+            <Plus className="h-4 w-4" />
+            새 대화
+          </Button>
+          {isLoggedIn && isSupported && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn("shrink-0 px-2", isSubscribed && "text-primary")}
+              onClick={isSubscribed ? unsubscribe : subscribe}
+              disabled={pushLoading}
+              title={isSubscribed ? "알림 끄기" : "알림 켜기"}
+            >
+              {isSubscribed ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+            </Button>
+          )}
+        </div>
       </div>
 
       <ScrollArea className="flex-1">
