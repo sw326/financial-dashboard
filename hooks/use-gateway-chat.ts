@@ -94,6 +94,14 @@ export function useGatewayChat(sessionKey: string = "webchat", initialMessages: 
               setMessages((prev) => [...prev, assistantMsg]);
               setStreaming("");
               setStatus("idle");
+              // Haiku 메모리 추출 (fire-and-forget, 실패해도 무방)
+              if (conversationId) {
+                fetch("/api/memory/extract", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ conversationId }),
+                }).catch(() => {});
+              }
             } else if (event.type === "error") {
               setError(event.error || "오류 발생");
               setStreaming("");

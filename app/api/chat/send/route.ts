@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase-server";
 import { supabaseServer } from "@/lib/supabase-server-admin";
 import { buildRagContext } from "@/lib/chat-rag";
+import { loadUserMemories, formatMemoriesForContext, detectMemoryRequest, saveMemory } from "@/lib/chat-memory";
 
 const GATEWAY_URL = (process.env.GATEWAY_URL || "https://desktop-76g4sk0.tailcfd4f8.ts.net").replace(/^wss?:\/\//, "https://");
 const GATEWAY_TOKEN = process.env.GATEWAY_TOKEN || "";
@@ -113,18 +114,33 @@ export async function POST(req: NextRequest) {
     console.warn("[chat/send] Auth check failed, proceeding as anonymous:", err);
   }
 
-  // ── 실시간 데이터 컨텍스트 (RAG) ──
-  let ragContext: string | null = null;
-  try {
-    ragContext = await buildRagContext(message);
-  } catch (err) {
-    console.warn("[chat/send] RAG context build failed:", err);
+  // ── 메모리 읽기 + RAG 병렬 실행 ──
+  const [ragContext, memoryContext] = await Promise.all([
+    buildRagContext(message).catch((err) => {
+      console.warn("[chat/send] RAG failed:", err);
+      return null;
+    }),
+    userId
+      ? loadUserMemories(userId)
+          .then(formatMemoriesForContext)
+          .catch(() => null)
+      : null,
+  ]);
+
+  // ── "기억해줘" 즉시 저장 (규칙 기반) ──
+  if (userId) {
+    const toRemember = detectMemoryRequest(message);
+    if (toRemember) {
+      const key = `user_note_${Date.now()}`;
+      await saveMemory(userId, key, toRemember, { category: "note", importance: 3, source: "user" });
+    }
   }
 
-  // ── 보안 instructions (고정, 우회 불가) + RAG 데이터 주입 ──
+  // ── 보안 instructions + 개인화 주입 (RAG + 메모리) ──
   const instructionParts = [BASE_INSTRUCTIONS];
-  if (userContext) instructionParts.push(userContext);
-  if (ragContext)  instructionParts.push(ragContext);
+  if (userContext)   instructionParts.push(userContext);
+  if (memoryContext) instructionParts.push(memoryContext);
+  if (ragContext)    instructionParts.push(ragContext);
   const instructions = instructionParts.join("\n\n");
 
   // ── 대화 히스토리 로드 (이전 세션 컨텍스트 오염 방지) ──
