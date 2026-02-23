@@ -1,47 +1,43 @@
 "use client";
 
-import { useMemo, useState, useCallback, useRef, useEffect } from "react";
+import { useMemo, useState, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
 
-function getHeatmapColor(pct: number): string {
+// ─── 고정 SVG 뷰포트 (이미지처럼 비율 유지, ResizeObserver 불필요) ───
+const VP_W = 1200;
+const VP_H = 675;
+const SECTOR_GAP = 2;       // 섹터 간 간격 (px)
+const HEADER_H = 18;         // 섹터 헤더 높이 (px)
+const HEADER_MIN_W = 50;
+const HEADER_MIN_H = 30;
+const CARD_SPACE_RIGHT = 22; // 팝오버 우측 공간 최소 %
+const CARD_SPACE_BELOW = 35; // 팝오버 하단 공간 최소 %
+
+function color(pct: number): string {
   if (pct >= 3) return "#2d8c3c";
   if (pct >= 2) return "#245f30";
-  if (pct >= 1) return "#1e3a28";
-  if (pct > 0) return "#2a3a2e";
-  if (pct === 0) return "#2a2a2e";
-  if (pct > -1) return "#3a2a2a";
-  if (pct > -2) return "#4a2028";
+  if (pct >= 1) return "#1e4a2a";
+  if (pct > 0)  return "#1a2e22";
+  if (pct === 0) return "#27272a";
+  if (pct > -1) return "#3a1e1e";
+  if (pct > -2) return "#5a1e28";
   if (pct > -3) return "#6b2030";
   return "#8b1a2b";
 }
 
-const LEGEND_COLORS = [
+const LEGEND = [
   { label: "-3%", color: "#8b1a2b" },
   { label: "-2%", color: "#6b2030" },
-  { label: "-1%", color: "#4a2028" },
-  { label: "0%",  color: "#2a2a2e" },
-  { label: "+1%", color: "#1e3a28" },
+  { label: "-1%", color: "#5a1e28" },
+  { label: "0%",  color: "#27272a" },
+  { label: "+1%", color: "#1a2e22" },
   { label: "+2%", color: "#245f30" },
   { label: "+3%", color: "#2d8c3c" },
 ];
 
-const TEXT_COLOR = "#ffffff";
-
-const fmtPrice = (v: number, isKR: boolean) => {
-  if (isKR) return v.toLocaleString();
-  return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
-};
-
-// 섹터 헤더 높이 (컨테이너 전체 height 기준 %)
-const HEADER_PCT = 2.2;
-
-// 팝오버 카드 배치 기준: 우측/하단 여유 공간 최소값 (% of container)
-const CARD_MIN_SPACE_RIGHT = 22; // 카드 최소 너비 ~22%
-const CARD_MIN_SPACE_BELOW = 35; // 카드 최대 높이 ~35%
-
+// ─── 타입 ───
 interface HeatmapStock {
   symbol: string;
   name: string;
@@ -51,266 +47,166 @@ interface HeatmapStock {
   market: string;
   sector?: string;
 }
+interface WeightedItem { weight: number; }
+type R<T> = { x: number; y: number; w: number; h: number; item: T };
+interface SectorRect { x: number; y: number; w: number; h: number; name: string; }
+type StockRect = { x: number; y: number; w: number; h: number; stock: HeatmapStock & { weight: number } };
 
-interface WeightedItem {
-  weight: number;
-}
-
-interface TreemapRect<T extends WeightedItem> {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  item: T;
-}
-
-// Squarified treemap — 큰 항목이 좌상단부터 배치
-function squarify<T extends WeightedItem>(
-  items: T[],
-  x: number, y: number, w: number, h: number
-): TreemapRect<T>[] {
+// ─── Squarified Treemap (픽셀 좌표) ───
+function squarify<T extends WeightedItem>(items: T[], x: number, y: number, w: number, h: number): R<T>[] {
   if (items.length === 0) return [];
   if (items.length === 1) return [{ x, y, w, h, item: items[0] }];
 
-  const totalWeight = items.reduce((s, i) => s + i.weight, 0);
-  if (totalWeight === 0) return [];
+  const total = items.reduce((s, i) => s + i.weight, 0);
+  if (total === 0) return [];
 
-  let bestSplit = 1;
-  let bestDiff = Infinity;
-  let runningSum = 0;
-
+  let bestSplit = 1, bestDiff = Infinity, sum = 0;
   for (let i = 0; i < items.length - 1; i++) {
-    runningSum += items[i].weight;
-    const diff = Math.abs(runningSum / totalWeight - 0.5);
-    if (diff < bestDiff) {
-      bestDiff = diff;
-      bestSplit = i + 1;
-    }
+    sum += items[i].weight;
+    const d = Math.abs(sum / total - 0.5);
+    if (d < bestDiff) { bestDiff = d; bestSplit = i + 1; }
   }
 
   const left = items.slice(0, bestSplit);
   const right = items.slice(bestSplit);
-  const leftWeight = left.reduce((s, i) => s + i.weight, 0);
-  const ratio = leftWeight / totalWeight;
+  const ratio = left.reduce((s, i) => s + i.weight, 0) / total;
 
-  // 가로가 넓으면 좌우 분할, 세로가 길면 상하 분할
   if (w >= h) {
-    const splitX = w * ratio;
-    return [
-      ...squarify(left, x, y, splitX, h),
-      ...squarify(right, x + splitX, y, w - splitX, h),
-    ];
+    const sx = w * ratio;
+    return [...squarify(left, x, y, sx, h), ...squarify(right, x + sx, y, w - sx, h)];
   } else {
-    const splitY = h * ratio;
-    return [
-      ...squarify(left, x, y, w, splitY),
-      ...squarify(right, x, y + splitY, w, h - splitY),
-    ];
+    const sy = h * ratio;
+    return [...squarify(left, x, y, w, sy), ...squarify(right, x, y + sy, w, h - sy)];
   }
 }
 
-interface SectorGroup extends WeightedItem {
-  name: string;
-  stocks: (HeatmapStock & { weight: number })[];
-  totalMcap: number;
-}
-
-interface SectorRect {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  name: string;
-  headerH: number; // 이 섹터의 헤더 높이(% of container)
-}
-
-// ─────────────────────────────────────────────────────────────
-// SectorHoverCard — 섹터 내 종목 리스트 팝오버
-// ─────────────────────────────────────────────────────────────
-function SectorHoverCard({
-  sectorName,
-  stocks,
-  position,
-  onNavigate,
-  onMouseEnter,
-  onMouseLeave,
+// ─── 섹터 팝오버 ───
+function SectorPopover({
+  sectorName, stocks, cssX, cssY, side, vSide, onNavigate, onMouseEnter, onMouseLeave,
 }: {
-  sectorName: string;
-  stocks: HeatmapStock[];
-  position: { x: number; y: number; side: "right" | "left"; vSide: "down" | "up" };
-  onNavigate: (symbol: string) => void;
-  onMouseEnter: () => void;
-  onMouseLeave: () => void;
+  sectorName: string; stocks: HeatmapStock[];
+  cssX: number; cssY: number;
+  side: "right" | "left"; vSide: "down" | "up";
+  onNavigate: (sym: string) => void;
+  onMouseEnter: () => void; onMouseLeave: () => void;
 }) {
   const sorted = [...stocks].sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
   const display = sorted.slice(0, 15);
-  const remaining = sorted.length - display.length;
+  const rest = sorted.length - display.length;
 
   return (
     <div
       className="absolute z-50 pointer-events-auto bg-popover border border-border rounded-lg shadow-xl p-3 min-w-[260px] max-w-[300px]"
       style={{
-        left: `${position.x}%`,
-        top: `${position.y}%`,
-        transform: `${position.side === "left" ? "translateX(-100%)" : ""} ${position.vSide === "up" ? "translateY(-100%)" : ""}`.trim() || undefined,
+        left: `${cssX}%`,
+        top: `${cssY}%`,
+        transform: [side === "left" && "translateX(-100%)", vSide === "up" && "translateY(-100%)"]
+          .filter(Boolean).join(" ") || undefined,
       }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
-      <div className="font-semibold text-sm text-foreground mb-2 pb-1.5 border-b border-border">
+      <div className="font-semibold text-sm mb-2 pb-1.5 border-b border-border">
         {sectorName}
         <span className="text-xs text-muted-foreground ml-2">({stocks.length}종목)</span>
       </div>
       <div className="space-y-0.5 max-h-[320px] overflow-y-auto">
-        {display.map((stock) => {
-          const isKR = stock.symbol.endsWith(".KS") || stock.symbol.endsWith(".KQ");
-          const isUp = stock.changePercent >= 0;
+        {display.map(s => {
+          const isKR = s.symbol.endsWith(".KS") || s.symbol.endsWith(".KQ");
+          const up = s.changePercent >= 0;
           return (
             <div
-              key={stock.symbol}
+              key={s.symbol}
               className="flex items-center justify-between gap-2 py-0.5 px-1 rounded hover:bg-muted/50 cursor-pointer text-xs"
-              onClick={(e) => { e.stopPropagation(); onNavigate(stock.symbol); }}
+              onClick={e => { e.stopPropagation(); onNavigate(s.symbol); }}
             >
-              <span className="truncate text-foreground font-medium flex-1 min-w-0">
-                {stock.name}
-              </span>
+              <span className="truncate font-medium flex-1 min-w-0">{s.name}</span>
               <span className="tabular-nums text-muted-foreground shrink-0">
-                {fmtPrice(stock.price, isKR)}
+                {isKR ? s.price.toLocaleString() : s.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
               </span>
-              <span className={`tabular-nums font-semibold shrink-0 w-[52px] text-right ${isUp ? "text-red-500" : "text-blue-500"}`}>
-                {isUp ? "+" : ""}{stock.changePercent.toFixed(2)}%
+              <span className={`tabular-nums font-semibold shrink-0 w-[52px] text-right ${up ? "text-red-400" : "text-blue-400"}`}>
+                {up ? "+" : ""}{s.changePercent.toFixed(2)}%
               </span>
             </div>
           );
         })}
       </div>
-      {remaining > 0 && (
-        <div className="text-[10px] text-muted-foreground mt-1.5 text-center">
-          외 {remaining}개
-        </div>
-      )}
+      {rest > 0 && <p className="text-[10px] text-muted-foreground mt-1.5 text-center">외 {rest}개</p>}
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// MarketHeatmap
-// ─────────────────────────────────────────────────────────────
+// ─── 메인 컴포넌트 ───
 export default function MarketHeatmap({ market = "all" }: { market?: string }) {
-  const { data: response, isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["heatmap", market],
     queryFn: async () => {
-      const res = await fetch(`/api/finance/heatmap?market=${market}`);
-      if (!res.ok) throw new Error("Failed");
-      return res.json() as Promise<{ stocks: HeatmapStock[]; total: number }>;
+      const r = await fetch(`/api/finance/heatmap?market=${market}`);
+      if (!r.ok) throw new Error("Failed");
+      return r.json() as Promise<{ stocks: HeatmapStock[]; total: number }>;
     },
-    staleTime: 1000 * 60 * 5,
+    staleTime: 300_000,
   });
+
   const router = useRouter();
-  const stocks = response?.stocks || [];
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
+  const stocks = data?.stocks || [];
 
-  const [hoveredSector, setHoveredSector] = useState<string | null>(null);
-  const [popoverPos, setPopoverPos] = useState({ x: 0, y: 0, side: "right" as "right" | "left", vSide: "down" as "down" | "up" });
+  const [hovered, setHovered] = useState<string | null>(null);
+  const [popover, setPopover] = useState({ x: 0, y: 0, side: "right" as "right" | "left", vSide: "down" as "down" | "up" });
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sectorRectsRef = useRef<SectorRect[]>([]);
+  const hoveredRef = useRef<string | null>(null);
+  hoveredRef.current = hovered;
 
-  // 마우스 leave 딜레이 — 카드로 이동할 시간 확보
-  const leaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearTimer = useCallback(() => { if (leaveTimer.current) clearTimeout(leaveTimer.current); }, []);
+  const scheduleHide = useCallback(() => { leaveTimer.current = setTimeout(() => setHovered(null), 350); }, []);
 
-  const clearLeaveTimer = useCallback(() => {
-    if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current);
-  }, []);
-
-  const scheduleHide = useCallback(() => {
-    leaveTimerRef.current = setTimeout(() => setHoveredSector(null), 350);
-  }, []);
-
-  // 섹터 rect 옆에 카드 배치 (% 좌표 — 컨테이너 기준 absolute)
-  const sectorRectsRef = useRef<typeof sectorRects>([]);
-  // hoveredSector ref — handleStockMouseEnter의 stale closure 방지
-  const hoveredSectorRef = useRef<string | null>(null);
-  hoveredSectorRef.current = hoveredSector;
-
-  const positionCardBySector = useCallback((sectorName: string) => {
-    const sr = sectorRectsRef.current.find((r) => r.name === sectorName);
+  const positionPopover = useCallback((name: string) => {
+    const sr = sectorRectsRef.current.find(r => r.name === name);
     if (!sr) return;
-
-    // 우측/하단 공간 체크
-    const spaceRight = 100 - (sr.x + sr.w);
-    const goRight = spaceRight > CARD_MIN_SPACE_RIGHT;
-    const spaceBelow = 100 - (sr.y + sr.h);
-    const goDown = spaceBelow > CARD_MIN_SPACE_BELOW;
-
-    const x = goRight ? sr.x + sr.w : sr.x;
-    const y = goDown ? sr.y : sr.y + sr.h; // 하단: 섹터 상단부터, 상단: 섹터 하단부터 (위로)
-
-    setPopoverPos({ x, y, side: goRight ? "right" : "left", vSide: goDown ? "down" : "up" });
+    // SVG 픽셀 → CSS % 변환
+    const sx = (sr.x / VP_W) * 100, sy = (sr.y / VP_H) * 100;
+    const sw = (sr.w / VP_W) * 100, sh = (sr.h / VP_H) * 100;
+    const goRight = 100 - (sx + sw) > CARD_SPACE_RIGHT;
+    const goDown = 100 - (sy + sh) > CARD_SPACE_BELOW;
+    setPopover({
+      x: goRight ? sx + sw : sx,
+      y: goDown ? sy : sy + sh,
+      side: goRight ? "right" : "left",
+      vSide: goDown ? "down" : "up",
+    });
   }, []);
 
-  const handleStockMouseEnter = useCallback((stock: HeatmapStock, e: React.MouseEvent) => {
-    void e;
-    clearLeaveTimer();
-    const sec = stock.sector || stock.market || null;
-    if (sec) positionCardBySector(sec);
-    // hoveredSectorRef로 최신값 참조 → hoveredSector 의존성 제거, 불필요한 재생성 방지
-    if (sec !== hoveredSectorRef.current) {
-      setHoveredSector(sec);
-    }
-  }, [clearLeaveTimer, positionCardBySector]);
-
-  const handleStockMouseLeave = useCallback(() => {
-    scheduleHide();
-  }, [scheduleHide]);
-
-  // 섹터 헤더 hover 핸들러
-  const handleSectorHeaderEnter = useCallback((sectorName: string) => {
-    clearLeaveTimer();
-    positionCardBySector(sectorName);
-    setHoveredSector(sectorName);
-  }, [clearLeaveTimer, positionCardBySector]);
-
-  const handleSectorHeaderLeave = useCallback(() => {
-    scheduleHide();
-  }, [scheduleHide]);
-
-  const handleNavigate = useCallback((symbol: string) => {
-    setHoveredSector(null);
-    router.push(`/stock/${encodeURIComponent(symbol)}`);
-  }, [router]);
-
-  // sector → stocks 맵 (팝오버용)
   const sectorStocksMap = useMemo(() => {
-    const map = new Map<string, HeatmapStock[]>();
+    const m = new Map<string, HeatmapStock[]>();
     for (const s of stocks) {
       const sec = s.sector || s.market || "기타";
-      if (!map.has(sec)) map.set(sec, []);
-      map.get(sec)!.push(s);
+      if (!m.has(sec)) m.set(sec, []);
+      m.get(sec)!.push(s);
     }
-    return map;
+    return m;
   }, [stocks]);
 
-  // Treemap 계산
-  const { sectorRects, stockRects } = useMemo(() => {
-    if (stocks.length === 0) return { sectorRects: [] as SectorRect[], stockRects: [] as { x: number; y: number; w: number; h: number; stock: HeatmapStock & { weight: number } }[] };
+  const { sectorRects, stockRects } = useMemo((): { sectorRects: SectorRect[]; stockRects: StockRect[] } => {
+    if (!stocks.length) return { sectorRects: [], stockRects: [] };
 
-    const hasSectors = stocks.some((s) => s.sector);
+    const totalMcap = stocks.reduce((s, st) => s + (st.marketCap || 0), 0);
+    if (!totalMcap) return { sectorRects: [], stockRects: [] };
+
+    const hasSectors = stocks.some(s => s.sector);
 
     // 섹터 정보 없으면 flat treemap
     if (!hasSectors) {
-      const totalMcap = stocks.reduce((s, st) => s + (st.marketCap || 0), 0);
-      if (totalMcap === 0) return { sectorRects: [], stockRects: [] };
-      const weighted = stocks
-        .filter((s) => (s.marketCap || 0) > 0)
-        .map((s) => ({ ...s, weight: (s.marketCap || 0) / totalMcap }))
-        .sort((a, b) => b.weight - a.weight);
-      const rects = squarify(weighted, 0, 0, 100, 100);
+      const ws = stocks.filter(s => s.marketCap > 0)
+                       .map(s => ({ ...s, weight: s.marketCap / totalMcap }))
+                       .sort((a, b) => b.weight - a.weight);
       return {
         sectorRects: [],
-        stockRects: rects.map((r) => ({ x: r.x, y: r.y, w: r.w, h: r.h, stock: r.item })),
+        stockRects: squarify(ws, 0, 0, VP_W, VP_H).map(r => ({ x: r.x, y: r.y, w: r.w, h: r.h, stock: r.item })),
       };
     }
 
-    // 섹터 그룹 구성
+    // 섹터 그룹핑
     const sectorMap = new Map<string, HeatmapStock[]>();
     for (const s of stocks) {
       const sec = s.sector || "기타";
@@ -318,255 +214,203 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
       sectorMap.get(sec)!.push(s);
     }
 
-    const totalMcap = stocks.reduce((s, st) => s + (st.marketCap || 0), 0);
-    if (totalMcap === 0) return { sectorRects: [], stockRects: [] };
-
-    const sectorGroups: SectorGroup[] = [];
-    for (const [name, sectorStocks] of sectorMap) {
-      const sectorTotalMcap = sectorStocks.reduce((s, st) => s + (st.marketCap || 0), 0);
-      sectorGroups.push({
-        name,
-        stocks: sectorStocks
-          .filter((s) => (s.marketCap || 0) > 0)
-          .map((s) => ({ ...s, weight: s.marketCap || 0 }))
-          .sort((a, b) => b.weight - a.weight), // 큰 종목 먼저
-        totalMcap: sectorTotalMcap,
-        weight: sectorTotalMcap / totalMcap,
-      });
-    }
-    // 큰 섹터가 좌상단에 오도록 내림차순 정렬하되, "기타"는 항상 맨 뒤로
-    sectorGroups.sort((a, b) => {
-      const aIsOther = a.name === "기타" || a.name === "Other";
-      const bIsOther = b.name === "기타" || b.name === "Other";
-      if (aIsOther && !bIsOther) return 1;  // "기타"가 뒤로
-      if (!aIsOther && bIsOther) return -1;
+    const groups = Array.from(sectorMap.entries()).map(([name, ss]) => ({
+      name,
+      stocks: ss.filter(s => s.marketCap > 0).map(s => ({ ...s, weight: s.marketCap })).sort((a, b) => b.weight - a.weight),
+      weight: ss.reduce((s, st) => s + (st.marketCap || 0), 0) / totalMcap,
+    })).sort((a, b) => {
+      if (a.name === "기타") return 1;
+      if (b.name === "기타") return -1;
       return b.weight - a.weight;
     });
 
-    // Level 1: 섹터 레이아웃 (큰 섹터부터 좌상단에 배치)
-    const sectorLayout = squarify(sectorGroups, 0, 0, 100, 100);
+    const layout = squarify(groups, 0, 0, VP_W, VP_H);
+    const finalSectors: SectorRect[] = [];
+    const finalStocks: StockRect[] = [];
 
-    const SECTOR_PAD = 0.2; // 섹터 간 간격 (%)
-    const finalSectorRects: SectorRect[] = [];
-    const finalStockRects: { x: number; y: number; w: number; h: number; stock: HeatmapStock & { weight: number } }[] = [];
+    for (const sr of layout) {
+      const g = sr.item;
+      const px = sr.x + SECTOR_GAP, py = sr.y + SECTOR_GAP;
+      const pw = sr.w - SECTOR_GAP * 2, ph = sr.h - SECTOR_GAP * 2;
+      if (pw <= 0 || ph <= 0) continue;
 
-    for (const sr of sectorLayout) {
-      const sg = sr.item;
-      const px = sr.x + SECTOR_PAD;
-      const py = sr.y + SECTOR_PAD;
-      const pw = sr.w - SECTOR_PAD * 2;
-      const ph = sr.h - SECTOR_PAD * 2;
+      const showHeader = pw >= HEADER_MIN_W && ph >= HEADER_MIN_H;
+      const hH = showHeader ? HEADER_H : 0;
 
-      // 헤더 높이: 섹터가 충분히 크면 HEADER_PCT, 너무 작으면 섹터 높이의 20% (최소 0)
-      const headerH = ph > HEADER_PCT * 2 ? Math.min(HEADER_PCT, ph * 0.25) : 0;
+      finalSectors.push({ x: px, y: py, w: pw, h: ph, name: g.name });
 
-      finalSectorRects.push({ x: px, y: py, w: pw, h: ph, name: sg.name, headerH });
+      const stockY = py + hH, stockH = ph - hH;
+      if (stockH <= 0 || !g.stocks.length) continue;
 
-      // Level 2: 종목은 헤더 아래 영역에서만 배치
-      const stockAreaY = py + headerH;
-      const stockAreaH = ph - headerH;
-
-      if (stockAreaH <= 0 || sg.stocks.length === 0) continue;
-
-      const sectorTotal = sg.stocks.reduce((s, st) => s + st.weight, 0);
-      const normalized = sg.stocks.map((s) => ({ ...s, weight: s.weight / sectorTotal }));
-      const stockLayout = squarify(normalized, px, stockAreaY, pw, stockAreaH);
-
-      for (const stk of stockLayout) {
-        finalStockRects.push({
-          x: stk.x, y: stk.y, w: stk.w, h: stk.h,
-          stock: stk.item,
-        });
-      }
+      const tot = g.stocks.reduce((s, st) => s + st.weight, 0);
+      const norm = g.stocks.map(s => ({ ...s, weight: s.weight / tot }));
+      squarify(norm, px, stockY, pw, stockH).forEach(r =>
+        finalStocks.push({ x: r.x, y: r.y, w: r.w, h: r.h, stock: r.item })
+      );
     }
 
-    return { sectorRects: finalSectorRects, stockRects: finalStockRects };
+    return { sectorRects: finalSectors, stockRects: finalStocks };
   }, [stocks]);
 
   sectorRectsRef.current = sectorRects;
 
-  // Track actual pixel size of the heatmap container
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(([entry]) => {
-      const { width, height } = entry.contentRect;
-      setContainerSize({ w: width, h: height });
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  const handleNavigate = useCallback((sym: string) => {
+    setHovered(null);
+    router.push(`/stock/${encodeURIComponent(sym)}`);
+  }, [router]);
 
   if (isLoading) return <Skeleton className="h-[350px] w-full rounded-lg" />;
-  if (stockRects.length === 0) return null;
+  if (!stockRects.length) return null;
 
   return (
-    <>
-      <div ref={containerRef} className="relative w-full bg-zinc-900 overflow-visible" style={{ aspectRatio: "16/9" }}>
+    <div className="space-y-2">
+      {/* SVG 뷰포트 고정 — 화면 축소 시 이미지처럼 비율 유지 */}
+      <div className="relative">
+        <svg
+          viewBox={`0 0 ${VP_W} ${VP_H}`}
+          width="100%"
+          style={{ display: "block" }}
+          className="bg-zinc-900 rounded-lg"
+        >
+          <defs>
+            {stockRects.map(r => (
+              <clipPath key={`cp-${r.stock.symbol}`} id={`cp-${r.stock.symbol}`}>
+                <rect x={r.x + 1} y={r.y + 1} width={r.w - 2} height={r.h - 2} />
+              </clipPath>
+            ))}
+          </defs>
 
-        {/* ── 섹터 border 프레임 (pointer-events: none) ── */}
-        {sectorRects.map((sr) => {
-          const isHovered = hoveredSector === sr.name;
-          return (
-            <div
-              key={`border-${sr.name}`}
-              className={cn(
-                "absolute border-2 transition-colors duration-150",
-                isHovered ? "border-amber-400/90" : "border-zinc-700/60"
-              )}
-              style={{
-                left: `${sr.x}%`,
-                top: `${sr.y}%`,
-                width: `${sr.w}%`,
-                height: `${sr.h}%`,
-                zIndex: 20,
-                pointerEvents: "none",
-              }}
-            />
-          );
-        })}
+          {/* ── 종목 셀 ── */}
+          {stockRects.map(rect => {
+            const pct = rect.stock.changePercent;
+            const bg = color(pct);
+            const isUS = !rect.stock.symbol.endsWith(".KS") && !rect.stock.symbol.endsWith(".KQ");
+            const label = isUS ? rect.stock.symbol.replace(/\^/, "") : rect.stock.name;
+            const sec = rect.stock.sector || rect.stock.market;
+            const isHovered = hovered === sec;
 
-        {/* ── 섹터 헤더 바 (종목 타일 위, 별도 바) ── */}
-        {sectorRects.map((sr) => {
-          if (sr.headerH <= 0) return null;
-          const isHovered = hoveredSector === sr.name;
-          const area = sr.w * sr.h;
-          if (area < 8) return null; // 너무 작은 섹터는 헤더 생략
+            // 셀 크기 기반 텍스트 크기 (SVG 픽셀 = 뷰포트 픽셀 → 스케일 무관)
+            const namePx = Math.min(rect.w * 0.13, rect.h * 0.28, 18);
+            const pctPx  = Math.min(namePx * 0.78, 13);
+            const showName = namePx >= 9 && rect.w >= 38;
+            const showPct  = pctPx >= 7 && rect.h >= 28 && rect.w >= 32;
 
-          return (
-            <div
-              key={`header-${sr.name}`}
-              className="absolute flex items-center px-1.5 truncate cursor-default select-none"
-              style={{
-                left: `${sr.x}%`,
-                top: `${sr.y}%`,
-                width: `${sr.w}%`,
-                height: `${sr.headerH}%`,
-                backgroundColor: isHovered
-                  ? "rgba(30,30,34,1)"
-                  : "rgba(24,24,27,0.88)",
-                borderBottom: `1px solid ${isHovered ? "rgba(251,191,36,0.5)" : "rgba(63,63,70,0.6)"}`,
-                zIndex: 25,
-                transition: "background-color 0.15s",
-              }}
-              onMouseEnter={() => handleSectorHeaderEnter(sr.name)}
-              onMouseLeave={handleSectorHeaderLeave}
-            >
-              <span
-                className={cn(
-                  "font-medium leading-none truncate",
-                  (sr.w / 100) * (containerSize.w || 1200) < 60 ? "text-[7px]" : (sr.w / 100) * (containerSize.w || 1200) < 100 ? "text-[9px]" : "text-[11px]",
-                  isHovered ? "text-amber-300" : "text-zinc-300"
-                )}
+            const cx = rect.x + rect.w / 2;
+            const cy = rect.y + rect.h / 2;
+            const nameY = (showName && showPct) ? cy - pctPx * 0.7 : cy;
+            const pctY  = (showName && showPct) ? cy + namePx * 0.7 : cy;
+
+            return (
+              <g
+                key={rect.stock.symbol}
+                onClick={() => handleNavigate(rect.stock.symbol)}
+                onMouseEnter={() => {
+                  clearTimer();
+                  if (sec && sec !== hoveredRef.current) { positionPopover(sec); setHovered(sec); }
+                }}
+                onMouseLeave={scheduleHide}
+                style={{ cursor: "pointer" }}
               >
-                {sr.name}
-              </span>
-            </div>
-          );
-        })}
+                <rect
+                  x={rect.x} y={rect.y} width={rect.w} height={rect.h}
+                  fill={bg}
+                  stroke="#00000055" strokeWidth={0.5}
+                  fillOpacity={isHovered ? 1 : 0.9}
+                />
+                {showName && (
+                  <text
+                    x={cx} y={nameY}
+                    textAnchor="middle" dominantBaseline="middle"
+                    fill="white" fontSize={namePx} fontWeight="700"
+                    clipPath={`url(#cp-${rect.stock.symbol})`}
+                    style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.8))" }}
+                  >
+                    {label}
+                  </text>
+                )}
+                {showPct && (
+                  <text
+                    x={cx} y={pctY}
+                    textAnchor="middle" dominantBaseline="middle"
+                    fill="white" fontSize={pctPx} fontWeight="600"
+                    clipPath={`url(#cp-${rect.stock.symbol})`}
+                    style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.6))" }}
+                  >
+                    {pct >= 0 ? "+" : ""}{pct.toFixed(2)}%
+                  </text>
+                )}
+              </g>
+            );
+          })}
 
-        {/* ── 종목 셀 ── */}
-        {stockRects.map((rect) => {
-          const pct = rect.stock.changePercent;
-          const bg = getHeatmapColor(pct);
-          const isSectorHovered = hoveredSector === (rect.stock.sector || rect.stock.market);
-
-          const isUS = !rect.stock.symbol.endsWith(".KS") && !rect.stock.symbol.endsWith(".KQ");
-          const displayName = isUS
-            ? rect.stock.symbol.replace(/\^/, "")
-            : rect.stock.name;
-
-          // Responsive: font size proportional to cell pixel size
-          const cw = containerSize.w || 1200;
-          const ch = containerSize.h || 675;
-          const pxW = (rect.w / 100) * cw;
-          const pxH = (rect.h / 100) * ch;
-
-          // Dynamic font size proportional to cell
-          // Clamp: name can't exceed 40% of cell height or 18% of width
-          const rawName = Math.min(pxH * 0.3, pxW * 0.15, 22);
-          // Further reduce on small cells to avoid overflow
-          const namePx = pxW < 80 ? rawName * 0.7 : rawName;
-          const pctPx = Math.min(namePx * 0.75, 13);
-
-          // Sequential hiding: percent first → then name
-          const showPercent = pxH >= 45 && pxW >= 80 && namePx >= 10;
-          const showName = namePx >= 9 && pxW >= 35;
-
-          return (
-            <div
-              key={rect.stock.symbol}
-              onClick={() => handleNavigate(rect.stock.symbol)}
-              onMouseEnter={(e) => handleStockMouseEnter(rect.stock, e)}
-              onMouseLeave={handleStockMouseLeave}
-              className="absolute cursor-pointer flex flex-col items-center justify-center overflow-hidden border border-black/30 dark:border-black/50 transition-all"
-              style={{
-                left: `${rect.x}%`,
-                top: `${rect.y}%`,
-                width: `${rect.w}%`,
-                height: `${rect.h}%`,
-                backgroundColor: bg,
-                color: TEXT_COLOR,
-                filter: isSectorHovered ? "brightness(1.15)" : undefined,
-                zIndex: isSectorHovered ? 10 : undefined,
-              }}
-            >
-              {showName && (
-                <span
-                  className="font-bold leading-tight overflow-hidden whitespace-nowrap max-w-[95%]"
-                  style={{
-                    fontSize: `${namePx}px`,
-                    textOverflow: "clip",
-                    textShadow: "1px 1px 2px rgba(0,0,0,0.6), 0 0 4px rgba(0,0,0,0.3)",
-                  }}
+          {/* ── 섹터 헤더 (종목 위 레이어) ── */}
+          {sectorRects.map(sr => {
+            const show = sr.w >= HEADER_MIN_W && sr.h >= HEADER_MIN_H;
+            if (!show) return null;
+            const isHov = hovered === sr.name;
+            const fs = sr.w < 90 ? 8 : sr.w < 150 ? 10 : 12;
+            return (
+              <g
+                key={`hdr-${sr.name}`}
+                onMouseEnter={() => { clearTimer(); positionPopover(sr.name); setHovered(sr.name); }}
+                onMouseLeave={scheduleHide}
+                style={{ cursor: "default" }}
+              >
+                <rect
+                  x={sr.x} y={sr.y} width={sr.w} height={HEADER_H}
+                  fill={isHov ? "rgba(30,30,34,0.97)" : "rgba(20,20,24,0.88)"}
+                />
+                <text
+                  x={sr.x + 5} y={sr.y + HEADER_H / 2}
+                  dominantBaseline="middle"
+                  fill={isHov ? "#fde68a" : "#a1a1aa"}
+                  fontSize={fs} fontWeight="500"
                 >
-                  {displayName}
-                </span>
-              )}
-              {showPercent && (
-                <span
-                  className="tabular-nums font-semibold leading-tight whitespace-nowrap"
-                  style={{
-                    fontSize: `${pctPx}px`,
-                    textShadow: "1px 1px 2px rgba(0,0,0,0.6), 0 0 4px rgba(0,0,0,0.3)",
-                  }}
-                >
-                  {pct >= 0 ? "+" : ""}{pct.toFixed(2)}%
-                </span>
-              )}
-            </div>
-          );
-        })}
+                  {sr.name}
+                </text>
+              </g>
+            );
+          })}
 
-        {/* 섹터 팝오버 카드 — 컨테이너 내부 absolute 배치 */}
-        {hoveredSector && sectorStocksMap.has(hoveredSector) && (
-          <SectorHoverCard
-            sectorName={hoveredSector}
-            stocks={sectorStocksMap.get(hoveredSector)!}
-            position={popoverPos}
+          {/* ── 섹터 외곽선 ── */}
+          {sectorRects.map(sr => (
+            <rect
+              key={`bdr-${sr.name}`}
+              x={sr.x} y={sr.y} width={sr.w} height={sr.h}
+              fill="none"
+              stroke={hovered === sr.name ? "#fbbf24" : "#52525b"}
+              strokeWidth={hovered === sr.name ? 2 : 0.8}
+              style={{ pointerEvents: "none" }}
+            />
+          ))}
+        </svg>
+
+        {/* ── 섹터 팝오버 (HTML 오버레이) ── */}
+        {hovered && sectorStocksMap.has(hovered) && (
+          <SectorPopover
+            sectorName={hovered}
+            stocks={sectorStocksMap.get(hovered)!}
+            cssX={popover.x} cssY={popover.y}
+            side={popover.side} vSide={popover.vSide}
             onNavigate={handleNavigate}
-            onMouseEnter={clearLeaveTimer}
-            onMouseLeave={() => setHoveredSector(null)}
+            onMouseEnter={clearTimer}
+            onMouseLeave={() => setHovered(null)}
           />
         )}
       </div>
 
-      {/* 색상 범례 */}
-      <div className="flex items-center justify-center gap-0 mt-2">
-        {LEGEND_COLORS.map((item) => (
+      {/* ── 색상 범례 ── */}
+      <div className="flex items-center justify-center">
+        {LEGEND.map(item => (
           <div
             key={item.label}
-            className="flex items-center justify-center px-3 py-1 text-xs font-medium text-white tabular-nums"
-            style={{
-              backgroundColor: item.color,
-              textShadow: "1px 1px 1px rgba(0,0,0,0.5)",
-            }}
+            className="px-3 py-1 text-xs font-medium text-white tabular-nums"
+            style={{ backgroundColor: item.color, textShadow: "1px 1px 1px rgba(0,0,0,0.5)" }}
           >
             {item.label}
           </div>
         ))}
       </div>
-
-    </>
+    </div>
   );
 }
