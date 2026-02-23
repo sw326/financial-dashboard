@@ -349,7 +349,7 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
             if (!show) return null;
             const isHov = hovered === sr.name;
             // 섹터 너비에 따라 폰트 크기 조절
-            const fs = sr.w < 80 ? 9 : sr.w < 160 ? 12 : sr.w < 280 ? 14 : 16;
+            const fs = sr.w < 80 ? 9 : sr.w < 160 ? 12 : sr.w < 280 ? 15 : sr.w < 450 ? 18 : 22;
             return (
               <g
                 key={`hdr-${sr.name}`}
@@ -410,17 +410,27 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
         )}
       </div>
 
-      {/* ── 색상 범례 ── */}
-      <div className="flex items-center justify-center">
-        {LEGEND.map(item => (
-          <div
-            key={item.label}
-            className="px-3 py-1 text-xs font-medium text-white tabular-nums"
-            style={{ backgroundColor: item.color, textShadow: "1px 1px 1px rgba(0,0,0,0.5)" }}
-          >
-            {item.label}
-          </div>
-        ))}
+      {/* ── 범례 + 데이터 설명 ── */}
+      <div className="flex items-center justify-between gap-2">
+        {/* 좌측: 데이터 기준 설명 */}
+        <p className="text-[11px] text-muted-foreground leading-snug shrink-0">
+          {market === "kr"
+            ? <>KOSPI · KOSDAQ<br /><span className="text-muted-foreground/70">시가총액 기준</span></>
+            : <>S&amp;P 500<br /><span className="text-muted-foreground/70">시가총액 기준</span></>
+          }
+        </p>
+        {/* 우측: 색상 범례 */}
+        <div className="flex items-center">
+          {LEGEND.map(item => (
+            <div
+              key={item.label}
+              className="px-3 py-1 text-xs font-medium text-white tabular-nums"
+              style={{ backgroundColor: item.color, textShadow: "1px 1px 1px rgba(0,0,0,0.5)" }}
+            >
+              {item.label}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
