@@ -33,25 +33,27 @@ export async function POST(req: NextRequest) {
   }
 
   // 로그인 유저 확인 + 개인화 컨텍스트
-  let personalizedSession = sessionKey;
   let systemContext: string | null = null;
 
   try {
     const supabase = await createSupabaseServer();
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      personalizedSession = `webchat:${user.id}`;
       systemContext = await buildPersonalizedContext(user.id);
     }
   } catch { /* 인증 실패 시 비회원으로 진행 */ }
 
+  // 개인화 컨텍스트는 메시지 앞에 주석으로 주입 (게이트웨이 system 파라미터 미지원)
+  const inputWithContext = systemContext
+    ? `[사용자 컨텍스트: ${systemContext.replace(/\n/g, ", ")}]\n\n${message.trim()}`
+    : message.trim();
+
   const body = {
     model: "openclaw:main",
-    input: message.trim(),
+    input: inputWithContext,
     stream: true,
-    user: personalizedSession,
+    user: sessionKey,
     ...(conversationId && { metadata: { conversationId } }),
-    ...(systemContext && { system: systemContext }),
   };
 
   const upstream = await fetch(`${GATEWAY_URL}/v1/responses`, {
@@ -59,7 +61,7 @@ export async function POST(req: NextRequest) {
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${GATEWAY_TOKEN}`,
-      "x-openclaw-session-key": personalizedSession,
+      "x-openclaw-session-key": sessionKey,
     },
     body: JSON.stringify(body),
   });
