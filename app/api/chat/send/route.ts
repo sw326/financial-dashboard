@@ -8,18 +8,28 @@ const GATEWAY_TOKEN = process.env.GATEWAY_TOKEN || "";
 export const maxDuration = 60;
 
 async function buildPersonalizedContext(userId: string): Promise<string | null> {
-  const { data: profile } = await supabaseServer
-    .from("user_profiles")
-    .select("display_name, investment_style, risk_tolerance")
-    .eq("user_id", userId)
-    .single();
-
-  if (!profile) return null;
+  const [{ data: profile }, { data: watchlist }] = await Promise.all([
+    supabaseServer
+      .from("user_profiles")
+      .select("display_name, investment_style, risk_tolerance")
+      .eq("user_id", userId)
+      .single(),
+    supabaseServer
+      .from("watchlist")
+      .select("symbol, name")
+      .eq("user_id", userId)
+      .order("added_at", { ascending: false })
+      .limit(20),
+  ]);
 
   const parts: string[] = [];
-  if (profile.display_name) parts.push(`사용자 이름: ${profile.display_name}`);
-  if (profile.investment_style) parts.push(`투자 성향: ${profile.investment_style}`);
-  if (profile.risk_tolerance) parts.push(`리스크 허용도: ${profile.risk_tolerance}/5`);
+  if (profile?.display_name) parts.push(`사용자 이름: ${profile.display_name}`);
+  if (profile?.investment_style) parts.push(`투자 성향: ${profile.investment_style}`);
+  if (profile?.risk_tolerance) parts.push(`리스크 허용도: ${profile.risk_tolerance}/5`);
+  if (watchlist?.length) {
+    const names = watchlist.map(w => w.name ?? w.symbol).join(", ");
+    parts.push(`관심종목: ${names}`);
+  }
 
   if (parts.length === 0) return null;
   return `[사용자 정보]\n${parts.join("\n")}`;

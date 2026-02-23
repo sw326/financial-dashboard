@@ -10,7 +10,7 @@ import SearchCommand from "@/components/search-command";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthButton } from "@/components/auth-button"
 import { Toaster } from "sonner"
-import { BarChart3, Building2, MessageSquare } from "lucide-react";
+import { BarChart3, Building2, MessageSquare, Star } from "lucide-react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -70,6 +70,7 @@ export default async function RootLayout({
                         {[
                           { href: "/market",      icon: BarChart3,     label: "주식" },
                           { href: "/real-estate", icon: Building2,     label: "부동산" },
+                          { href: "/watchlist",   icon: Star,          label: "관심" },
                           { href: "/chat",        icon: MessageSquare, label: "채팅" },
                         ].map(({ href, icon: Icon, label }) => (
                           <a

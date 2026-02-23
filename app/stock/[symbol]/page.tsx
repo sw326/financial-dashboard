@@ -17,6 +17,7 @@ import { useSummary, type StockSummary } from "@/hooks/use-summary";
 import { useRealtime } from "@/hooks/use-realtime";
 import { isKrMarketOpen, isUsMarketOpen } from "@/lib/market-hours";
 import { LightweightChart, MA_COLORS } from "@/components/lightweight-chart";
+import { WatchlistButton } from "@/components/watchlist-button";
 
 const MINUTE_OPTIONS = [
   { value: "1m", label: "1분" },
@@ -140,11 +141,16 @@ function StockDetailContent({ symbol }: { symbol: string }) {
             </CardTitle>
             <div className="text-lg font-medium">{quote.name}</div>
           </div>
-          <CardAction>
+          <CardAction className="flex items-center gap-2">
             <Badge variant="outline" className={`text-sm ${color(quote.change)}`}>
               {quote.change >= 0 ? <TrendingUp className="size-4 mr-1" /> : <TrendingDown className="size-4 mr-1" />}
               {sign(quote.change)}{quote.change.toFixed(2)} ({sign(quote.changePercent)}{quote.changePercent.toFixed(2)}%)
             </Badge>
+            <WatchlistButton
+              symbol={symbol}
+              name={quote.name}
+              market={isKr ? "kr" : "us"}
+            />
           </CardAction>
         </CardHeader>
       </Card>
