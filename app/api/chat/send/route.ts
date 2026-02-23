@@ -1,9 +1,29 @@
 import { NextRequest } from "next/server";
+import { createSupabaseServer } from "@/lib/supabase-server";
+import { supabaseServer } from "@/lib/supabase-server-admin";
 
 const GATEWAY_URL = (process.env.GATEWAY_URL || "https://desktop-76g4sk0.tailcfd4f8.ts.net").replace(/^wss?:\/\//, "https://");
 const GATEWAY_TOKEN = process.env.GATEWAY_TOKEN || "";
 
 export const maxDuration = 60;
+
+async function buildPersonalizedContext(userId: string): Promise<string | null> {
+  const { data: profile } = await supabaseServer
+    .from("user_profiles")
+    .select("display_name, investment_style, risk_tolerance")
+    .eq("user_id", userId)
+    .single();
+
+  if (!profile) return null;
+
+  const parts: string[] = [];
+  if (profile.display_name) parts.push(`사용자 이름: ${profile.display_name}`);
+  if (profile.investment_style) parts.push(`투자 성향: ${profile.investment_style}`);
+  if (profile.risk_tolerance) parts.push(`리스크 허용도: ${profile.risk_tolerance}/5`);
+
+  if (parts.length === 0) return null;
+  return `[사용자 정보]\n${parts.join("\n")}`;
+}
 
 export async function POST(req: NextRequest) {
   const { message, sessionKey = "webchat", conversationId } = await req.json();
@@ -12,12 +32,26 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ error: "message required" }), { status: 400 });
   }
 
+  // 로그인 유저 확인 + 개인화 컨텍스트
+  let personalizedSession = sessionKey;
+  let systemContext: string | null = null;
+
+  try {
+    const supabase = await createSupabaseServer();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      personalizedSession = `webchat:${user.id}`;
+      systemContext = await buildPersonalizedContext(user.id);
+    }
+  } catch { /* 인증 실패 시 비회원으로 진행 */ }
+
   const body = {
     model: "openclaw:main",
     input: message.trim(),
     stream: true,
-    user: sessionKey,
+    user: personalizedSession,
     ...(conversationId && { metadata: { conversationId } }),
+    ...(systemContext && { system: systemContext }),
   };
 
   const upstream = await fetch(`${GATEWAY_URL}/v1/responses`, {
@@ -25,7 +59,7 @@ export async function POST(req: NextRequest) {
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${GATEWAY_TOKEN}`,
-      "x-openclaw-session-key": sessionKey,
+      "x-openclaw-session-key": personalizedSession,
     },
     body: JSON.stringify(body),
   });
@@ -66,7 +100,6 @@ export async function POST(req: NextRequest) {
               continue;
             }
 
-            // OpenResponses 이벤트 → 클라이언트 형식으로 변환
             const evType = event.type as string;
 
             if (evType === "response.output_text.delta") {
@@ -74,7 +107,6 @@ export async function POST(req: NextRequest) {
                 `data: ${JSON.stringify({ type: "delta", text: event.delta })}\n\n`
               );
             } else if (evType === "response.output_text.done") {
-              // 전체 텍스트 완성
               controller.enqueue(
                 `data: ${JSON.stringify({ type: "final", content: event.text, conversationId })}\n\n`
               );
