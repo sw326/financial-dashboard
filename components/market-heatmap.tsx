@@ -7,9 +7,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 // ─── 고정 SVG 뷰포트 (이미지처럼 비율 유지, ResizeObserver 불필요) ───
 const VP_W = 1200;
-const VP_H = 720;             // 범례 영역 포함 (히트맵 675 + 하단 45)
-const MAP_H = 675;            // 실제 히트맵 높이
-const LEGEND_Y = 683;         // 범례 Y 시작점
+const VP_H = 740;             // 범례 영역 포함
+const MAP_H = 645;            // 실제 히트맵 높이 (하단 여백 확보)
+const LEGEND_Y = 700;         // 범례 중심 Y (MAP_H와 55px 간격)
 const SECTOR_GAP = 2;
 const HEADER_H = 32;
 const HEADER_MIN_W = 50;
@@ -400,13 +400,13 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
           ))}
           {/* ── SVG 내부 범례 + 데이터 설명 (모바일도 비율 유지) ── */}
           {/* 구분선 */}
-          <line x1={0} y1={MAP_H + 4} x2={VP_W} y2={MAP_H + 4} stroke="#3f3f46" strokeWidth={1} />
+          <line x1={0} y1={MAP_H + 8} x2={VP_W} y2={MAP_H + 8} stroke="#3f3f46" strokeWidth={1} />
 
           {/* 좌측: 데이터 기준 설명 */}
-          <text x={8} y={LEGEND_Y + 4} dominantBaseline="middle" fill="#71717a" fontSize={14} fontWeight="400">
+          <text x={8} y={LEGEND_Y - 8} dominantBaseline="middle" fill="#71717a" fontSize={14} fontWeight="400">
             {market === "kr" ? "KOSPI · KOSDAQ" : "S&P 500"}
           </text>
-          <text x={8} y={LEGEND_Y + 20} dominantBaseline="middle" fill="#52525b" fontSize={12} fontWeight="400">
+          <text x={8} y={LEGEND_Y + 10} dominantBaseline="middle" fill="#52525b" fontSize={12} fontWeight="400">
             시가총액 기준
           </text>
 
