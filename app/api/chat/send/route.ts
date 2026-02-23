@@ -52,7 +52,10 @@ export async function POST(req: NextRequest) {
       sessionKey = `webchat:${user.id}`;
       systemContext = await buildPersonalizedContext(user.id);
     }
-  } catch { /* 인증 실패 시 비회원으로 진행 */ }
+  } catch (err) {
+    // CHM-261: 인증 우회 시 로깅 (장애 감지용)
+    console.warn("[chat/send] Auth check failed, proceeding as anonymous:", err);
+  }
 
   // 개인화 컨텍스트는 메시지 앞에 주석으로 주입 (게이트웨이 system 파라미터 미지원)
   const inputWithContext = systemContext
@@ -115,6 +118,8 @@ export async function POST(req: NextRequest) {
             try {
               event = JSON.parse(jsonStr);
             } catch {
+              // CHM-261: 파싱 실패 로깅
+              console.warn("[chat/send] Failed to parse SSE event:", jsonStr.slice(0, 80));
               continue;
             }
 

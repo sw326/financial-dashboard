@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 
 const PUSH_SERVER_URL = "https://desktop-76g4sk0.tailcfd4f8.ts.net/push";
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!;
+// CHM-260: 빌드 타임이 아닌 런타임 체크 (! assertion 제거)
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
 function urlBase64ToUint8Array(base64: string): BufferSource {
   const padding = "=".repeat((4 - (base64.length % 4)) % 4);
@@ -48,6 +49,8 @@ export function usePushNotification() {
       if (perm !== "granted") throw new Error("알림 권한이 거부되었습니다");
 
       // 2. SW 등록 + 구독 생성
+      // CHM-260: VAPID 키 런타임 체크
+      if (!VAPID_PUBLIC_KEY) throw new Error("VAPID_PUBLIC_KEY가 설정되지 않았습니다");
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,

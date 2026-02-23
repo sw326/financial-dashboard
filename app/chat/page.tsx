@@ -8,6 +8,7 @@ import { useCallback, useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { LogIn } from "lucide-react";
+import { toast } from "sonner";
 
 const ANON_MSG_LIMIT = 5;
 const ANON_COUNT_KEY = "chat-anon-count";
@@ -54,11 +55,17 @@ export default function ChatPage() {
 
       // user 메시지 저장
       if (convIdRef.current) {
+        // CHM-259: 저장 실패 시 toast (fire-and-forget이지만 실패는 알림)
         supabase.from("messages").insert({
           conversation_id: convIdRef.current,
           role: "user",
           content: text,
-        }).then(({ error: e }) => { if (e) console.error("[chat] user msg save:", e); });
+        }).then(({ error: e }) => {
+          if (e) {
+            console.error("[chat] user msg save:", e);
+            toast.error("메시지 저장 실패", { description: "대화 내역이 저장되지 않았습니다" });
+          }
+        });
         supabase.from("conversations")
           .update({ updated_at: new Date().toISOString() })
           .eq("id", convIdRef.current)
@@ -89,7 +96,12 @@ export default function ChatPage() {
       conversation_id: convIdRef.current,
       role: "assistant",
       content: lastMsg.content,
-    }).then(({ error: e }) => { if (e) console.error("[chat] assistant msg save:", e); });
+    }).then(({ error: e }) => {
+      if (e) {
+        console.error("[chat] assistant msg save:", e);
+        toast.error("응답 저장 실패", { description: "AI 응답이 저장되지 않았습니다" });
+      }
+    });
   }, [messages, streaming]);
 
   return (

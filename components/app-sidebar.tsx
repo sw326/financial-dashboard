@@ -71,7 +71,9 @@ export function AppSidebar() {
       .select("id, title, updated_at")
       .order("updated_at", { ascending: false })
       .limit(30)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        // CHM-261: 로딩 에러 로깅
+        if (error) { console.error("[Sidebar] Failed to load conversations:", error); return; }
         if (data) setConversations(data)
       })
   }, [])
