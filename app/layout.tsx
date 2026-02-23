@@ -8,6 +8,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import SearchCommand from "@/components/search-command";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { AuthButton } from "@/components/auth-button";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -66,12 +67,14 @@ export default async function RootLayout({
                       <nav className="flex items-center gap-1 ml-1">
                         <a href="/market" className="px-3 py-1.5 text-sm font-medium rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">주식</a>
                         <a href="/real-estate" className="px-3 py-1.5 text-sm font-medium rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">부동산</a>
+                        <a href="/chat" className="px-3 py-1.5 text-sm font-medium rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">채팅</a>
                       </nav>
                       <div className="flex-1" />
                       <div className="w-64">
                         <SearchCommand />
                       </div>
                       <ThemeToggle />
+                      <AuthButton />
                     </div>
                   </div>
                   <div className="container mx-auto px-4 lg:px-6 py-6 max-w-7xl">
