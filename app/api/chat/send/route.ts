@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase-server";
 import { supabaseServer } from "@/lib/supabase-server-admin";
+import { buildRagContext } from "@/lib/chat-rag";
 
 const GATEWAY_URL = (process.env.GATEWAY_URL || "https://desktop-76g4sk0.tailcfd4f8.ts.net").replace(/^wss?:\/\//, "https://");
 const GATEWAY_TOKEN = process.env.GATEWAY_TOKEN || "";
@@ -112,10 +113,19 @@ export async function POST(req: NextRequest) {
     console.warn("[chat/send] Auth check failed, proceeding as anonymous:", err);
   }
 
-  // ── 보안 instructions (고정, 우회 불가) ──
-  const instructions = userContext
-    ? `${BASE_INSTRUCTIONS}\n\n${userContext}`
-    : BASE_INSTRUCTIONS;
+  // ── 실시간 데이터 컨텍스트 (RAG) ──
+  let ragContext: string | null = null;
+  try {
+    ragContext = await buildRagContext(message);
+  } catch (err) {
+    console.warn("[chat/send] RAG context build failed:", err);
+  }
+
+  // ── 보안 instructions (고정, 우회 불가) + RAG 데이터 주입 ──
+  const instructionParts = [BASE_INSTRUCTIONS];
+  if (userContext) instructionParts.push(userContext);
+  if (ragContext)  instructionParts.push(ragContext);
+  const instructions = instructionParts.join("\n\n");
 
   // ── 대화 히스토리 로드 (이전 세션 컨텍스트 오염 방지) ──
   let historyInput: { role: string; content: string }[] = [];
