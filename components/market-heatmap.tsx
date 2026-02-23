@@ -5,6 +5,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// 텍스트 폭 추정 (한글 full-width, 영문 half-width)
+function estimateTextWidth(text: string, fontSize: number): number {
+  let w = 0;
+  for (const ch of text) {
+    w += ch.charCodeAt(0) > 0x3000 ? fontSize * 0.90 : fontSize * 0.58;
+  }
+  return w;
+}
+
 // ─── 고정 SVG 뷰포트 (이미지처럼 비율 유지, ResizeObserver 불필요) ───
 const VP_W = 1200;
 const VP_H = 740;             // 범례 영역 포함
@@ -293,11 +302,15 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
             const sec = rect.stock.sector || rect.stock.market;
             const isHovered = hovered === sec;
 
-            // 셀 크기 기반 텍스트 크기 (SVG 픽셀 = 뷰포트 픽셀 → 스케일 무관)
-            const namePx = Math.min(rect.w * 0.20, rect.h * 0.38, 32);
-            const pctPx  = Math.min(namePx * 0.72, 20);
-            const showName = namePx >= 9 && rect.w >= 38;
-            const showPct  = pctPx >= 7 && rect.h >= 28 && rect.w >= 32;
+            // 셀 크기 기반 텍스트 크기
+            let namePx = Math.min(rect.w * 0.16, rect.h * 0.30, 24);
+            // 텍스트가 셀 너비를 벗어나면 폰트 자동 축소
+            const availW = rect.w - 8;
+            const textW = estimateTextWidth(label, namePx);
+            if (textW > availW) namePx = Math.max(namePx * (availW / textW) * 0.92, 7);
+            const pctPx  = Math.min(namePx * 0.72, 16);
+            const showName = namePx >= 7 && rect.w >= 32;
+            const showPct  = pctPx >= 6 && rect.h >= 24 && rect.w >= 28;
 
             const cx = rect.x + rect.w / 2;
             const cy = rect.y + rect.h / 2;
