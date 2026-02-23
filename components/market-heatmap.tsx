@@ -9,9 +9,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 const VP_W = 1200;
 const VP_H = 675;
 const SECTOR_GAP = 2;       // 섹터 간 간격 (px)
-const HEADER_H = 18;         // 섹터 헤더 높이 (px)
+const HEADER_H = 24;         // 섹터 헤더 높이 (px)
 const HEADER_MIN_W = 50;
-const HEADER_MIN_H = 30;
+const HEADER_MIN_H = 36;
 const CARD_SPACE_RIGHT = 22; // 팝오버 우측 공간 최소 %
 const CARD_SPACE_BELOW = 35; // 팝오버 하단 공간 최소 %
 
@@ -343,12 +343,13 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
             );
           })}
 
-          {/* ── 섹터 헤더 (종목 위 레이어) ── */}
+          {/* ── 섹터 헤더 (Finviz 스타일: 진한 배경 + 굵은 텍스트) ── */}
           {sectorRects.map(sr => {
             const show = sr.w >= HEADER_MIN_W && sr.h >= HEADER_MIN_H;
             if (!show) return null;
             const isHov = hovered === sr.name;
-            const fs = sr.w < 90 ? 8 : sr.w < 150 ? 10 : 12;
+            // 섹터 너비에 따라 폰트 크기 조절
+            const fs = sr.w < 80 ? 9 : sr.w < 160 ? 12 : sr.w < 280 ? 14 : 16;
             return (
               <g
                 key={`hdr-${sr.name}`}
@@ -356,15 +357,25 @@ export default function MarketHeatmap({ market = "all" }: { market?: string }) {
                 onMouseLeave={scheduleHide}
                 style={{ cursor: "default" }}
               >
+                {/* 헤더 배경 */}
                 <rect
                   x={sr.x} y={sr.y} width={sr.w} height={HEADER_H}
-                  fill={isHov ? "rgba(30,30,34,0.97)" : "rgba(20,20,24,0.88)"}
+                  fill={isHov ? "#1c1c20" : "#131316"}
                 />
+                {/* 하단 구분선 */}
+                <line
+                  x1={sr.x} y1={sr.y + HEADER_H}
+                  x2={sr.x + sr.w} y2={sr.y + HEADER_H}
+                  stroke={isHov ? "#fbbf24" : "#3f3f46"}
+                  strokeWidth={isHov ? 1.5 : 1}
+                />
+                {/* 섹터명 */}
                 <text
-                  x={sr.x + 5} y={sr.y + HEADER_H / 2}
+                  x={sr.x + 7} y={sr.y + HEADER_H / 2}
                   dominantBaseline="middle"
-                  fill={isHov ? "#fde68a" : "#a1a1aa"}
-                  fontSize={fs} fontWeight="500"
+                  fill={isHov ? "#fde68a" : "#e4e4e7"}
+                  fontSize={fs} fontWeight="600"
+                  letterSpacing="0.3"
                 >
                   {sr.name}
                 </text>
