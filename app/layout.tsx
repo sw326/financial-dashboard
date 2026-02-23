@@ -8,7 +8,8 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import SearchCommand from "@/components/search-command";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { AuthButton } from "@/components/auth-button";
+import { AuthButton } from "@/components/auth-button"
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -84,6 +85,7 @@ export default async function RootLayout({
               </SidebarProvider>
             </TooltipProvider>
           </QueryProvider>
+        <Toaster richColors position="bottom-right" />
         </ThemeProvider>
       </body>
     </html>

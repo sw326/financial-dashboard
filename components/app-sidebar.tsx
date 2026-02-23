@@ -3,6 +3,7 @@
 import * as React from "react"
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
+import { toast } from "sonner"
 import {
   LayoutDashboard,
   BarChart3,
@@ -102,14 +103,22 @@ export function AppSidebar() {
     e.preventDefault()
     e.stopPropagation()
     setDeletingId(convId)
+    // CHM-258: 낙관적 업데이트 — 실패 시 롤백
+    const snapshot = [...conversations]
+    setConversations((prev) => prev.filter((c) => c.id !== convId))
     try {
-      await supabase.from("conversations").delete().eq("id", convId)
-      setConversations((prev) => prev.filter((c) => c.id !== convId))
+      const { error } = await supabase.from("conversations").delete().eq("id", convId)
+      if (error) throw error
       if (pathname === `/chat/${convId}`) router.push("/chat")
+    } catch (err) {
+      // 실패 시 롤백 + 토스트
+      setConversations(snapshot)
+      toast.error("대화 삭제에 실패했습니다", { description: String(err) })
+      console.error("[Sidebar] Delete conversation failed:", err)
     } finally {
       setDeletingId(null)
     }
-  }, [pathname, router])
+  }, [pathname, router, conversations])
 
   return (
     <Sidebar>

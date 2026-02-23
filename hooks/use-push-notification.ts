@@ -32,7 +32,11 @@ export function usePushNotification() {
       reg.pushManager.getSubscription()
     ).then((sub) => {
       setIsSubscribed(!!sub);
-    }).catch(() => {});
+    }).catch((err) => {
+      // CHM-257: SW 등록 실패 원인 로깅
+      console.error("[Push] Service Worker registration failed:", err);
+      setError("알림 초기화 실패 — 브라우저가 지원하지 않거나 HTTPS가 아닐 수 있습니다");
+    });
   }, []);
 
   const subscribe = useCallback(async () => {

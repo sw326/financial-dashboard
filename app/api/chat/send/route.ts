@@ -25,8 +25,16 @@ async function buildPersonalizedContext(userId: string): Promise<string | null> 
   return `[사용자 정보]\n${parts.join("\n")}`;
 }
 
+// CHM-255: request body 타입 정의
+interface ChatSendRequest {
+  message: string;
+  sessionKey?: string;
+  conversationId?: string;
+}
+
 export async function POST(req: NextRequest) {
-  const { message, sessionKey: clientSessionKey, conversationId } = await req.json();
+  const reqBody = (await req.json()) as ChatSendRequest;
+  const { message, sessionKey: clientSessionKey, conversationId } = reqBody;
 
   if (!message?.trim()) {
     return new Response(JSON.stringify({ error: "message required" }), { status: 400 });
@@ -72,6 +80,11 @@ export async function POST(req: NextRequest) {
   if (!upstream.ok) {
     const err = await upstream.text();
     return new Response(JSON.stringify({ error: err }), { status: upstream.status });
+  }
+
+  // CHM-256: upstream.body null 체크
+  if (!upstream.body) {
+    return new Response(JSON.stringify({ error: "Empty upstream response" }), { status: 502 });
   }
 
   // SSE 스트림을 클라이언트에 그대로 relay
