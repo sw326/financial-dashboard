@@ -168,17 +168,18 @@ export default function SearchCommand() {
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="p-0">
-          <DialogHeader className="px-4 pt-4">
+        {/* 모바일: 상단 고정 (키보드 열려도 자동완성 리스트 가려지지 않게) */}
+        <DialogContent className="p-0 !top-4 !translate-y-0 sm:!top-[50%] sm:!-translate-y-1/2 flex flex-col max-h-[85dvh]">
+          <DialogHeader className="px-4 pt-4 shrink-0">
             <DialogTitle>종목 검색</DialogTitle>
           </DialogHeader>
-          <Command shouldFilter={false}>
+          <Command shouldFilter={false} className="flex flex-col min-h-0 flex-1">
             <CommandInput
               placeholder="종목명 또는 심볼 입력..."
               value={search}
               onValueChange={setSearch}
             />
-            <CommandList>
+            <CommandList className="overflow-y-auto flex-1">
               {loading && (
                 <div className="flex items-center justify-center py-6">
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
