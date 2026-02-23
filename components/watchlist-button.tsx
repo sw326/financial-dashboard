@@ -60,7 +60,7 @@ export function WatchlistButton({ symbol, name, market, size = "default", classN
               )}
             />
             {size !== "sm" && (
-              <span className="ml-1 text-xs">{isWatched ? "관심" : "관심추가"}</span>
+              <span className="hidden sm:inline ml-1 text-xs">{isWatched ? "관심" : "관심추가"}</span>
             )}
           </Button>
         </TooltipTrigger>

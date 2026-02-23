@@ -141,10 +141,11 @@ function StockDetailContent({ symbol }: { symbol: string }) {
             </CardTitle>
             <div className="text-lg font-medium">{quote.name}</div>
           </div>
-          <CardAction className="flex items-center gap-2">
-            <Badge variant="outline" className={`text-sm ${color(quote.change)}`}>
-              {quote.change >= 0 ? <TrendingUp className="size-4 mr-1" /> : <TrendingDown className="size-4 mr-1" />}
-              {sign(quote.change)}{quote.change.toFixed(2)} ({sign(quote.changePercent)}{quote.changePercent.toFixed(2)}%)
+          <CardAction className="flex flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+            <Badge variant="outline" className={`text-xs sm:text-sm whitespace-nowrap ${color(quote.change)}`}>
+              {quote.change >= 0 ? <TrendingUp className="size-3.5 mr-1" /> : <TrendingDown className="size-3.5 mr-1" />}
+              <span className="hidden sm:inline">{sign(quote.change)}{quote.change.toFixed(2)} </span>
+              ({sign(quote.changePercent)}{quote.changePercent.toFixed(2)}%)
             </Badge>
             <WatchlistButton
               symbol={symbol}
