@@ -21,7 +21,7 @@ export function ChatSidebar() {
   const pathname = usePathname();
   const { isLoggedIn, isLoading } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const { isSupported, isSubscribed, isLoading: pushLoading, subscribe, unsubscribe } = usePushNotification();
+  const { isSupported, isSubscribed, isLoading: pushLoading, error: pushError, subscribe, unsubscribe } = usePushNotification();
 
   const loadConversations = useCallback(async () => {
     const { data } = await supabase
@@ -89,12 +89,21 @@ export function ChatSidebar() {
             <Button
               variant="ghost"
               size="sm"
-              className={cn("shrink-0 px-2", isSubscribed && "text-primary")}
+              className={cn(
+                "shrink-0 px-2",
+                isSubscribed && "text-primary",
+                pushError && "text-destructive"
+              )}
               onClick={isSubscribed ? unsubscribe : subscribe}
               disabled={pushLoading}
-              title={isSubscribed ? "알림 끄기" : "알림 켜기"}
+              title={pushError ?? (isSubscribed ? "알림 끄기" : "알림 켜기")}
             >
-              {isSubscribed ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+              {pushLoading
+                ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                : isSubscribed
+                  ? <Bell className="h-4 w-4" />
+                  : <BellOff className="h-4 w-4" />
+              }
             </Button>
           )}
         </div>
