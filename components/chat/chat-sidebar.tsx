@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,6 @@ import { useAuth } from "@/hooks/use-auth";
 interface Conversation {
   id: string;
   title: string | null;
-  created_at: string;
   updated_at: string;
 }
 
@@ -22,25 +21,43 @@ export function ChatSidebar() {
   const { isLoggedIn, isLoading } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
 
+  const loadConversations = useCallback(async () => {
+    const { data } = await supabase
+      .from("conversations")
+      .select("id, title, updated_at")
+      .order("updated_at", { ascending: false })
+      .limit(50);
+    if (data) setConversations(data);
+  }, []);
+
   useEffect(() => {
     if (!isLoggedIn) {
       setConversations([]);
       return;
     }
-    loadConversations();
-  }, [isLoggedIn]);
 
-  async function loadConversations() {
-    const { data } = await supabase
-      .from("conversations")
-      .select("*")
-      .order("updated_at", { ascending: false });
-    if (data) setConversations(data);
+    loadConversations();
+
+    // 실시간 구독 — conversations 변경 시 자동 갱신
+    const channel = supabase
+      .channel("sidebar-conversations")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversations" },
+        () => loadConversations()
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [isLoggedIn, loadConversations]);
+
+  // 새 대화: pushState로 URL이 변경된 상태일 수 있으므로 window.location으로 완전 이동
+  function handleNewChat() {
+    window.location.href = "/chat";
   }
 
   return (
     <div className="w-64 border-r bg-muted/30 flex flex-col h-full shrink-0">
-      {/* Header */}
       <div className="p-3 border-b space-y-2">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors">
@@ -49,25 +66,25 @@ export function ChatSidebar() {
             <span>대시보드</span>
           </Link>
         </div>
-        <Link href="/chat">
-          <Button variant="outline" size="sm" className="w-full justify-start gap-2">
-            <Plus className="h-4 w-4" />
-            새 대화
-          </Button>
-        </Link>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-start gap-2"
+          onClick={handleNewChat}
+        >
+          <Plus className="h-4 w-4" />
+          새 대화
+        </Button>
       </div>
 
-      {/* Conversation List */}
       <ScrollArea className="flex-1">
         {isLoading ? (
-          // 로딩 스켈레톤
           <div className="p-3 space-y-2">
             {[...Array(3)].map((_, i) => (
               <div key={i} className="h-8 rounded-md bg-muted animate-pulse" />
             ))}
           </div>
         ) : !isLoggedIn ? (
-          // 비로그인 empty state
           <div className="flex flex-col items-center justify-center h-full px-4 py-8 text-center gap-3">
             <LogIn className="h-8 w-8 text-muted-foreground/50" />
             <div className="space-y-1">
@@ -86,9 +103,13 @@ export function ChatSidebar() {
         ) : (
           <div className="p-2 space-y-1">
             {conversations.map((conv) => {
-              const isActive = pathname === `/chat/${conv.id}`;
+              // pushState로 URL이 변경됐을 수 있으므로 window.location.pathname 사용
+              const currentPath = typeof window !== "undefined"
+                ? window.location.pathname
+                : pathname;
+              const isActive = currentPath === `/chat/${conv.id}`;
               return (
-                <Link
+                <a
                   key={conv.id}
                   href={`/chat/${conv.id}`}
                   className={cn(
@@ -100,7 +121,7 @@ export function ChatSidebar() {
                 >
                   <MessageSquare className="h-4 w-4 shrink-0" />
                   <span className="truncate">{conv.title || "새 대화"}</span>
-                </Link>
+                </a>
               );
             })}
             {conversations.length === 0 && (
