@@ -104,11 +104,10 @@ export function AlgorithmFeed({ isLoggedIn }: Props) {
     isFetchingNextPage,
     isLoading,
   } = useInfiniteQuery<FeedPage>({
-    queryKey: ["algorithm-feed"],
+    queryKey: ["algorithm-feed", isLoggedIn],
     queryFn: ({ pageParam }) => fetchFeedPage(pageParam as number),
     initialPageParam: 1,
     getNextPageParam: (last) => last.hasMore ? last.page + 1 : undefined,
-    enabled: isLoggedIn,
     staleTime: 3 * 60 * 1000,
   });
 
@@ -124,8 +123,6 @@ export function AlgorithmFeed({ isLoggedIn }: Props) {
     return () => observer.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  if (!isLoggedIn) return null;
-
   const allStocks = data?.pages.flatMap((p) => p.stocks) ?? [];
   const feedType = data?.pages[0]?.type;
   const isPersonalized = feedType === "personalized";
@@ -136,15 +133,17 @@ export function AlgorithmFeed({ isLoggedIn }: Props) {
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold flex items-center gap-1.5">
           {isPersonalized
-            ? <><Sparkles className="size-4 text-muted-foreground" /> 내 관심 피드</>
-            : <><TrendingUp className="size-4 text-muted-foreground" /> 지금 인기 종목</>
+            ? <><Sparkles className="size-4 text-muted-foreground" />내 관심 피드</>
+            : <><TrendingUp className="size-4 text-muted-foreground" />지금 인기 종목</>
           }
         </h2>
         {!isPersonalized && !isLoading && (
-          <Link href="/chat"
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+          <Link
+            href={isLoggedIn ? "/chat" : "/auth/login"}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
             <MessageSquare className="size-3" />
-            대화하면 맞춤화돼요
+            {isLoggedIn ? "대화하면 맞춤화돼요" : "로그인하면 맞춤화돼요"}
           </Link>
         )}
       </div>

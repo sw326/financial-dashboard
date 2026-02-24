@@ -43,19 +43,8 @@ export default function FeedPage() {
         <IndexCarousel indices={carouselIndices} />
       )}
 
-      {/* 알고리즘 피드 (무한 스크롤) */}
+      {/* 알고리즘 피드 (무한 스크롤) — 비로그인도 트렌딩 표시 (CHM-296) */}
       <AlgorithmFeed isLoggedIn={isLoggedIn} />
-
-      {/* 비로그인 안내 */}
-      {!isLoggedIn && (
-        <div className="text-center py-16 space-y-3">
-          <p className="text-4xl">🦞</p>
-          <p className="text-lg font-semibold">로그인하면 맞춤 피드가 생겨요</p>
-          <p className="text-sm text-muted-foreground">
-            채팅에서 관심 종목을 물어보면 여기에 개인화된 피드가 표시돼요.
-          </p>
-        </div>
-      )}
     </div>
   );
 }

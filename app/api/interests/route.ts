@@ -1,8 +1,12 @@
 /**
  * GET /api/interests?page=1&limit=20
- * 알고리즘 피드 페이지네이션 (CHM-295)
+ * 알고리즘 피드 (CHM-295, CHM-296)
  *
- * 순서: 개인화(score DESC) → 소진되면 trending 블렌딩
+ * 비로그인 → trending 100%
+ * 로그인 interests=0 → trending 100%
+ * interests 1~3  → trending 60% + personal 40%
+ * interests 4~9  → trending 30% + personal 70%
+ * interests ≥10  → personal 100%
  */
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -10,6 +14,7 @@ import { supabaseServer } from "@/lib/supabase/admin";
 import YahooFinance from "yahoo-finance2";
 
 const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
+const PAGE_SIZE = 20;
 
 interface FeedStock {
   symbol: string;
@@ -43,12 +48,33 @@ async function fetchQuotes(symbols: string[]): Promise<FeedStock[]> {
     .filter((q) => q.price > 0);
 }
 
+async function getTrending(exclude: Set<string>, limit: number, offset: number): Promise<FeedStock[]> {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const res = await fetch(
+    `${siteUrl}/api/finance/trending?market=kr&limit=${limit + offset}`,
+    { next: { revalidate: 300 } }
+  ).catch(() => null);
+  if (!res?.ok) return [];
+  const td = await res.json();
+  return (td?.stocks ?? [] as FeedStock[])
+    .filter((s: FeedStock) => !exclude.has(s.symbol))
+    .slice(offset, offset + limit);
+}
+
+// interests 수 → 블렌딩 비율 (CHM-296)
+function getBlendRatio(interestCount: number): { personal: number; trending: number } {
+  if (interestCount === 0)  return { personal: 0,   trending: 1 };
+  if (interestCount < 4)    return { personal: 0.4, trending: 0.6 };
+  if (interestCount < 10)   return { personal: 0.7, trending: 0.3 };
+  return                           { personal: 1,   trending: 0 };
+}
+
 export async function GET(req: NextRequest) {
-  const page  = Math.max(1, parseInt(req.nextUrl.searchParams.get("page")  ?? "1"));
-  const limit = Math.min(20, parseInt(req.nextUrl.searchParams.get("limit") ?? "20"));
+  const page   = Math.max(1, parseInt(req.nextUrl.searchParams.get("page")  ?? "1"));
+  const limit  = Math.min(20, parseInt(req.nextUrl.searchParams.get("limit") ?? "20"));
   const offset = (page - 1) * limit;
 
-  // 인증
+  // 인증 (실패해도 비로그인으로 계속)
   let userId: string | null = null;
   try {
     const supabase = await createSupabaseServer();
@@ -56,65 +82,56 @@ export async function GET(req: NextRequest) {
     if (user) userId = user.id;
   } catch { /* 비로그인 */ }
 
-  // 비로그인
-  if (!userId) return NextResponse.json({ type: "guest", stocks: [], hasMore: false });
+  // ── 비로그인: trending만 ──
+  if (!userId) {
+    const stocks = await getTrending(new Set(), limit, offset);
+    return NextResponse.json({ type: "trending", stocks, hasMore: stocks.length === limit, page });
+  }
 
-  // ── 개인화 구간: user_interests score DESC ──
-  const { data: interests, count: totalInterests } = await supabaseServer
+  // ── 전체 interests 수 파악 ──
+  const { count: totalInterests } = await supabaseServer
     .from("user_interests")
-    .select("symbol, name, is_kr, score", { count: "exact" })
-    .eq("user_id", userId)
-    .order("score", { ascending: false })
-    .range(offset, offset + limit - 1);
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId);
 
-  const personalCount = totalInterests ?? 0;
-  const personalSymbols = (interests ?? [])
-    .map((i) => i.symbol)
-    .filter((s): s is string => !!s);
+  const interestCount = totalInterests ?? 0;
+  const { personal: pRatio, trending: tRatio } = getBlendRatio(interestCount);
 
-  if (personalSymbols.length === limit) {
-    // 개인화 결과만으로 페이지 채워짐
-    const quotes = await fetchQuotes(personalSymbols);
-    const symbolOrder = new Map(personalSymbols.map((s, i) => [s, i]));
-    quotes.sort((a, b) => (symbolOrder.get(a.symbol) ?? 99) - (symbolOrder.get(b.symbol) ?? 99));
-    return NextResponse.json({
-      type: "personalized",
-      stocks: quotes,
-      hasMore: offset + limit < personalCount,
-      page,
-    });
+  const personalLimit  = Math.round(limit * pRatio);
+  const trendingLimit  = limit - personalLimit;
+
+  // ── 개인화 구간 ──
+  let personalStocks: FeedStock[] = [];
+  let personalHasMore = false;
+
+  if (personalLimit > 0) {
+    const personalOffset = offset; // personal은 score DESC 전체 기준
+    const { data: interests } = await supabaseServer
+      .from("user_interests")
+      .select("symbol, name, is_kr")
+      .eq("user_id", userId)
+      .order("score", { ascending: false })
+      .range(personalOffset, personalOffset + personalLimit - 1);
+
+    const symbols = (interests ?? []).map((i) => i.symbol).filter((s): s is string => !!s);
+    if (symbols.length > 0) {
+      personalStocks = await fetchQuotes(symbols);
+      personalHasMore = symbols.length === personalLimit;
+    }
   }
 
-  // ── 개인화 소진 → trending 블렌딩 ──
-  const personalizedStocks = personalSymbols.length > 0
-    ? await fetchQuotes(personalSymbols) : [];
-
-  const trendNeeded = limit - personalizedStocks.length;
-  const excludeSymbols = new Set(personalSymbols);
-
-  // trending API 내부 직접 호출
-  const trendingOffset = Math.max(0, offset - personalCount);
-  const trendRes = await fetch(
-    `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/api/finance/trending?market=kr&limit=${trendNeeded + trendingOffset}`,
-    { next: { revalidate: 300 } }
-  ).catch(() => null);
-
+  // ── 트렌딩 구간 ──
   let trendingStocks: FeedStock[] = [];
-  if (trendRes?.ok) {
-    const td = await trendRes.json();
-    const allTrending: FeedStock[] = (td?.stocks ?? [])
-      .filter((s: FeedStock) => !excludeSymbols.has(s.symbol))
-      .slice(trendingOffset, trendingOffset + trendNeeded);
-    trendingStocks = allTrending;
+  const excludeSet = new Set(personalStocks.map((s) => s.symbol));
+
+  if (trendingLimit > 0) {
+    const trendOffset = Math.max(0, offset - Math.round(offset * pRatio));
+    trendingStocks = await getTrending(excludeSet, trendingLimit, trendOffset);
   }
 
-  const combined = [...personalizedStocks, ...trendingStocks];
-  const type = personalizedStocks.length > 0 ? "personalized" : "trending";
+  const stocks = [...personalStocks, ...trendingStocks];
+  const type = personalStocks.length > 0 ? "personalized" : "trending";
+  const hasMore = personalHasMore || trendingStocks.length === trendingLimit;
 
-  return NextResponse.json({
-    type,
-    stocks: combined,
-    hasMore: trendingStocks.length === trendNeeded, // trending이 더 있으면 계속
-    page,
-  });
+  return NextResponse.json({ type, stocks, hasMore, page, interestCount });
 }
