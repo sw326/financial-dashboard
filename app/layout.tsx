@@ -81,12 +81,12 @@ export default async function RootLayout({
                             className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                           >
                             <Icon className="h-4 w-4 shrink-0" />
-                            <span className="hidden sm:inline">{label}</span>
+                            <span className="hidden lg:inline">{label}</span>
                           </a>
                         ))}
                       </nav>
                       <div className="flex-1" />
-                      <div className="w-64">
+                      <div className="w-40 md:w-52 lg:w-64">
                         <SearchCommand />
                       </div>
                       <ThemeToggle />
