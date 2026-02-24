@@ -4,6 +4,11 @@
 import YahooFinance from "yahoo-finance2";
 import { getKrStockName } from "@/lib/kr-stock-names";
 
+// ── 서버사이드 인메모리 캐시 (Vercel serverless 인스턴스 내 유효) ─────────────
+interface CacheEntry<T> { data: T; expiresAt: number }
+const quoteCache = new Map<string, CacheEntry<StockData[]>>();
+const QUOTE_TTL = 60_000; // 1분 (주가 데이터)
+
 const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
 export const KR_STOCKS = [
@@ -45,6 +50,12 @@ export interface StockData {
 }
 
 export async function fetchQuotesBatch(symbols: string[]): Promise<StockData[]> {
+  // 캐시 키: 정렬된 심볼 조합
+  const cacheKey = [...symbols].sort().join(",");
+  const now = Date.now();
+  const hit = quoteCache.get(cacheKey);
+  if (hit && hit.expiresAt > now) return hit.data;
+
   const batchSize = 10;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const quotes: any[] = [];
@@ -53,7 +64,7 @@ export async function fetchQuotesBatch(symbols: string[]): Promise<StockData[]> 
     const res = await Promise.all(batch.map((s) => yf.quote(s).catch(() => null)));
     quotes.push(...res.filter(Boolean));
   }
-  return quotes
+  const result = quotes
     .filter((q) => q?.regularMarketPrice != null)
     .map((q) => ({
       symbol: q.symbol ?? "",
@@ -70,6 +81,9 @@ export async function fetchQuotesBatch(symbols: string[]): Promise<StockData[]> 
       dividendYield: q.trailingAnnualDividendYield ? q.trailingAnnualDividendYield * 100 : undefined,
       isKR: (q.symbol ?? "").endsWith(".KS") || (q.symbol ?? "").endsWith(".KQ"),
     }));
+
+  quoteCache.set(cacheKey, { data: result, expiresAt: now + QUOTE_TTL });
+  return result;
 }
 
 /** 인기 국장 종목 (시가총액 내림차순) — cold start 피드용 */

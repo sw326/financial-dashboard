@@ -7,6 +7,10 @@ import { getKrStockName } from "@/lib/kr-stock-names";
 
 const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
+// 검색 결과 캐시 — 10분 (종목 목록 자주 안 바뀜)
+const searchCache = new Map<string, { data: unknown; expiresAt: number }>();
+const SEARCH_TTL = 10 * 60_000;
+
 const ALLOWED_TYPES = new Set(["EQUITY", "INDEX", "ETF"]);
 
 interface SearchResult {
@@ -83,9 +87,12 @@ async function searchYahoo(q: string): Promise<SearchResult[]> {
 
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get("q")?.trim();
-  if (!q) {
-    return NextResponse.json({ results: [] });
-  }
+  if (!q) return NextResponse.json({ results: [] });
+
+  const now = Date.now();
+  const cacheKey = q.toLowerCase();
+  const hit = searchCache.get(cacheKey);
+  if (hit && hit.expiresAt > now) return NextResponse.json(hit.data);
 
   try {
     // 한글 → 네이버만, 영문 → 네이버 + Yahoo 병렬
@@ -105,7 +112,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ results: merged.slice(0, 15) });
+    const result = { results: merged.slice(0, 15) };
+    searchCache.set(cacheKey, { data: result, expiresAt: now + SEARCH_TTL });
+    return NextResponse.json(result);
   } catch {
     return NextResponse.json({ results: [] });
   }

@@ -4,11 +4,19 @@ import { getKrStockName } from "@/lib/kr-stock-names";
 
 const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
+// 재무 데이터 — 30분 캐시 (자주 안 변함)
+const cache = new Map<string, { data: unknown; expiresAt: number }>();
+const TTL = 30 * 60_000;
+
 export async function GET(request: NextRequest) {
   const symbol = request.nextUrl.searchParams.get("symbol")?.trim();
   if (!symbol) {
     return NextResponse.json({ error: "symbol required" }, { status: 400 });
   }
+
+  const now = Date.now();
+  const hit = cache.get(symbol);
+  if (hit && hit.expiresAt > now) return NextResponse.json(hit.data);
 
   try {
     const data = await yf.quoteSummary(symbol, {
@@ -103,6 +111,7 @@ export async function GET(request: NextRequest) {
       currency: sd?.currency || "KRW",
     };
 
+    cache.set(symbol, { data: result, expiresAt: now + TTL });
     return NextResponse.json(result);
   } catch (error) {
     console.error("Summary API error:", error);
