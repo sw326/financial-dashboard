@@ -32,7 +32,7 @@ export default function FeedPage() {
 
   return (
     <div className="space-y-6">
-      {/* 지수/원자재 캐로셀 */}
+      {/* 지수/원자재 캐로셀 — 전체 폭 */}
       {loadCarousel ? (
         <div className="grid grid-cols-4 gap-2">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -43,8 +43,10 @@ export default function FeedPage() {
         <IndexCarousel indices={carouselIndices} />
       )}
 
-      {/* 알고리즘 피드 (무한 스크롤) — 비로그인도 트렌딩 표시 (CHM-296) */}
-      <AlgorithmFeed isLoggedIn={isLoggedIn} />
+      {/* 알고리즘 피드 — SNS 피드 폭 (max-w-2xl 중앙 정렬) */}
+      <div className="max-w-2xl mx-auto">
+        <AlgorithmFeed isLoggedIn={isLoggedIn} />
+      </div>
     </div>
   );
 }

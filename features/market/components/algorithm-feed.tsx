@@ -70,7 +70,7 @@ function FeedCard({
   };
 
   return (
-    <div className="flex items-center gap-2 py-2 hover:bg-muted/40 transition-colors -mx-2 px-2 rounded-lg group">
+    <div className="flex items-center gap-2 py-3 hover:bg-muted/40 transition-colors -mx-2 px-2 rounded-lg group">
       {/* 순위 */}
       <span className="w-6 text-center text-xs text-muted-foreground/60 tabular-nums shrink-0">{rank}</span>
 
