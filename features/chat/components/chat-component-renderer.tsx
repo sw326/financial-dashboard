@@ -3,11 +3,13 @@
 import { StockCard, type StockCardData } from "./renderers/stock-card";
 import { MultiStock, type MultiStockData } from "./renderers/multi-stock";
 import { IndexSummary, type IndexSummaryData } from "./renderers/index-summary";
+import { MiniChart, type MiniChartData } from "./renderers/mini-chart";
 
 type ComponentPayload =
   | ({ type: "stock-card" } & StockCardData)
   | ({ type: "multi-stock" } & MultiStockData)
-  | ({ type: "index-summary" } & IndexSummaryData);
+  | ({ type: "index-summary" } & IndexSummaryData)
+  | ({ type: "mini-chart" } & MiniChartData);
 
 interface Props {
   raw: string; // JSON 문자열
@@ -33,6 +35,8 @@ export function ChatComponentRenderer({ raw }: Props) {
       return <MultiStock data={payload} />;
     case "index-summary":
       return <IndexSummary data={payload} />;
+    case "mini-chart":
+      return <MiniChart data={payload} />;
     default:
       return null;
   }

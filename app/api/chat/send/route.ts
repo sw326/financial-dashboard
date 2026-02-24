@@ -47,10 +47,17 @@ const BASE_INSTRUCTIONS = `당신은 ChumjiFinance(첨지파이낸스)의 금융
 {"type":"index-summary","indices":[{"symbol":"^KS11","name":"KOSPI","price":2580.5,"change":-12.3,"changePercent":-0.47},{"symbol":"^KQ11","name":"KOSDAQ","price":745.2,"change":3.1,"changePercent":0.42}]}
 \`\`\`
 
+미니 차트 (차트 보여줘, 그래프 요청 시):
+\`\`\`component
+{"type":"mini-chart","symbol":"005930.KS","name":"삼성전자","isKR":true}
+\`\`\`
+
 규칙:
-- 종목 1개 언급 → stock-card 사용
+- 종목 시세 질문 → stock-card 사용
 - 종목 2개 이상 비교 → multi-stock 사용
 - 시장 전반 질문 (코스피가 어때요? 등) → index-summary 사용
+- "차트", "그래프", "추이", "흐름" 요청 → mini-chart 사용
+- stock-card + mini-chart 함께 출력 가능 (카드 → 차트 순서)
 - 컴포넌트 블록은 설명 텍스트 뒤에 배치
 - isKR: 한국 종목(.KS/.KQ)이면 true, 미국 종목이면 false
 
