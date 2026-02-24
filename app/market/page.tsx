@@ -144,7 +144,7 @@ export default function MarketPage() {
             {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-16" />)}
           </div>
         ) : (
-          <StockList stocks={stocks} />
+          <StockList stocks={stocks} offset={(page - 1) * 20} />
         )}
         {!stocksLoading && totalPages > 1 && (
           <div className="flex justify-center gap-2 mt-4">

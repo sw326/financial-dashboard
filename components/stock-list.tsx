@@ -6,9 +6,10 @@ import type { MarketIndex } from "@/features/market/types";
 
 interface StockListProps {
   stocks: MarketIndex[];
+  offset?: number; // 페이지 기반 순위 오프셋 (기본 0)
 }
 
-export default function StockList({ stocks }: StockListProps) {
+export default function StockList({ stocks, offset = 0 }: StockListProps) {
   const color = (v: number) => (v >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]");
   const sign = (v: number) => (v >= 0 ? "+" : "");
 
@@ -21,7 +22,7 @@ export default function StockList({ stocks }: StockListProps) {
           className="flex items-center justify-between py-3 px-4 hover:bg-muted/50 transition-colors"
         >
           <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground w-6 tabular-nums text-right">{i + 1}</span>
+            <span className="text-sm text-muted-foreground w-6 tabular-nums text-right">{offset + i + 1}</span>
             <div>
               <p className="text-sm font-medium">{s.name}</p>
               <p className="text-xs text-muted-foreground">{s.symbol}</p>
