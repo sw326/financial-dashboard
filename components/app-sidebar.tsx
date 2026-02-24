@@ -130,8 +130,8 @@ export function AppSidebar() {
         <div className="px-3 py-4">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition-opacity">
             <Wallet className="size-5" />
-            <span className="hidden lg:inline">Financial Dashboard</span>
-            <span className="lg:hidden">FD</span>
+            <span className="group-data-[collapsible=icon]:hidden">Financial Dashboard</span>
+            <span className="hidden group-data-[collapsible=icon]:inline">FD</span>
           </Link>
         </div>
 
