@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 import { cn } from "@/lib/utils";
+import { ChatComponentRenderer } from "./chat-component-renderer";
 
 interface ChatBubbleProps {
   role: "user" | "assistant";
@@ -18,6 +19,11 @@ const markdownComponents: Components = {
     </a>
   ),
   code: ({ className, children, ...props }) => {
+    // UI 컴포넌트 블록 (CHM-289) — ```component{...}```
+    if (className === "language-component") {
+      const raw = String(children).trim();
+      return <ChatComponentRenderer raw={raw} />;
+    }
     const isBlock = className?.includes("language-");
     return isBlock ? (
       <code {...props} className="block bg-muted p-3 rounded-lg overflow-x-auto my-2 text-sm">
