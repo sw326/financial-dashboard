@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import type { MarketIndex } from "@/lib/types";
+import type { MarketIndex } from "@/features/market/types";
 
 interface StockListProps {
   stocks: MarketIndex[];

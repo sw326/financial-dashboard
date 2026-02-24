@@ -17,7 +17,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { AptTrade } from "@/lib/types";
+import { AptTrade } from "@/features/real-estate/types";
 import { formatAmount } from "@/lib/utils";
 
 interface AptDetailModalProps {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { MarketIndex } from "@/lib/types";
+import type { MarketIndex } from "@/features/market/types";
 
 interface IndexCarouselProps {
   indices: MarketIndex[];

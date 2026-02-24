@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { ChartData } from "@/lib/types";
+import { ChartData } from "@/features/stock/types";
 
 export function useChart(symbol: string, period: string, interval?: string) {
   return useQuery<ChartData[]>({

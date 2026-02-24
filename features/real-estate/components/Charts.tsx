@@ -19,7 +19,7 @@ import { useTrades } from "@/features/real-estate/hooks/useTrades";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatAmount } from "@/lib/utils";
-import { AptTrade } from "@/lib/types";
+import { AptTrade } from "@/features/real-estate/types";
 
 function aggregateByMonth(trades: AptTrade[]) {
   const map = new Map<string, { sum: number; count: number }>();

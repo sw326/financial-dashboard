@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { TRADE_API_BASE_URL } from "@/lib/constants";
-import { AptTrade } from "@/lib/types";
+import { AptTrade } from "@/features/real-estate/types";
 
 // Simple in-memory cache
 const cache = new Map<string, { data: AptTrade[]; ts: number }>();

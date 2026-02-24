@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { MarketIndex } from "@/lib/types";
+import type { MarketIndex } from "@/features/market/types";
 
 interface TrendingResponse {
   stocks: MarketIndex[];

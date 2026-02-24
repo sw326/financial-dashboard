@@ -17,7 +17,7 @@ import { useTrades } from "@/features/real-estate/hooks/useTrades";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatAmount } from "@/lib/utils";
-import { AptTrade } from "@/lib/types";
+import { AptTrade } from "@/features/real-estate/types";
 import { AptDetailModal } from "@/components/apt-detail-modal";
 
 function aggregateByApt(trades: AptTrade[]) {

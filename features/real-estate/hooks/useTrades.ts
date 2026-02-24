@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { AptTrade } from "@/lib/types";
+import { AptTrade } from "@/features/real-estate/types";
 import { getMonthsBack, periodToMonths, filterByArea, fetchTrades } from "@/lib/api";
 
 export function useTrades(guCode: string, period: string, areaFilter: string) {

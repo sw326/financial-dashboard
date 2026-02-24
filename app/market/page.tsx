@@ -11,7 +11,7 @@ import { useQuotes } from "@/hooks/use-quotes";
 import { useTrending } from "@/features/market/hooks/use-trending";
 import StockList from "@/components/stock-list";
 import { IndexCarousel } from "@/features/market/components/index-carousel";
-import type { MarketIndex } from "@/lib/types";
+import type { MarketIndex } from "@/features/market/types";
 
 const INDICES = [
   { symbol: "^KS11", name: "코스피" },

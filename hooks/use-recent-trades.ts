@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { AptTrade } from "@/lib/types";
+import { AptTrade } from "@/features/real-estate/types";
 
 export function useRecentTrades(lawdCd: string, dealYmd: string, limit: number = 5) {
   return useQuery<AptTrade[]>({

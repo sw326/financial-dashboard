@@ -6,14 +6,12 @@
  * CHM-275
  */
 import { createBrowserClient } from "@supabase/ssr";
-
-const SUPABASE_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./constants";
 
 /** 싱글톤 — 클라이언트 컴포넌트에서 직접 사용 */
-export const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON);
+export const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /** 팩토리 — 매번 새 인스턴스가 필요한 경우 */
 export function createSupabaseBrowser() {
-  return createBrowserClient(SUPABASE_URL, SUPABASE_ANON);
+  return createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }

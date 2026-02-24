@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { MarketIndex } from "@/lib/types";
+import { MarketIndex } from "@/features/market/types";
 import { isAnyMarketOpen } from "@/lib/market-hours";
 
 export function useQuotes(symbols: string[]) {

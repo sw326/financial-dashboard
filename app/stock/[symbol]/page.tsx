@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // ToggleGroup removed - using Button group instead
 import { TrendingUp, TrendingDown, BarChart3, Activity, Target, Landmark, PiggyBank, Users } from "lucide-react";
-import type { StockQuote } from "@/lib/types";
+import type { StockQuote } from "@/features/stock/types";
 import { useQuotes } from "@/hooks/use-quotes";
 import { useChart } from "@/features/stock/hooks/use-chart";
 import { useSummary, type StockSummary } from "@/features/stock/hooks/use-summary";

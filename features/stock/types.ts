@@ -10,5 +10,6 @@ export interface ChartData {
   volume: number;
 }
 
-// StockQuote는 market 도메인과 공유
+// @dependency: market — StockQuote는 증시/종목 양쪽에서 사용하는 공유 타입
+// 원본: features/market/types.ts
 export type { StockQuote } from "@/features/market/types";
