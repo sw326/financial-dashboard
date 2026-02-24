@@ -125,7 +125,7 @@ export function AppSidebar() {
   }, [pathname, router, conversations])
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
       <SidebarContent>
         <div className="px-3 py-4">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition-opacity">

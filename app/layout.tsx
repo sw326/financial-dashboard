@@ -6,6 +6,7 @@ import { QueryProvider } from "@/components/query-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { SidebarBreakpointController } from "@/components/sidebar-breakpoint-controller";
 import SearchCommand from "@/components/search-command";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthButton } from "@/features/auth/components/auth-button"
@@ -61,6 +62,7 @@ export default async function RootLayout({
           <QueryProvider>
             <TooltipProvider>
               <SidebarProvider defaultOpen={sidebarOpen}>
+                <SidebarBreakpointController />
                 <AppSidebar />
                 <main className="w-full">
                   <div className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
