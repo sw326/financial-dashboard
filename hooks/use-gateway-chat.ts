@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { useAuth } from "@/hooks/use-auth";
 
 export interface ChatMessage {
   id: string;
@@ -20,6 +21,7 @@ export function useGatewayChat(sessionKey: string = "webchat", initialMessages: 
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const { isLoggedIn } = useAuth(); // Low fix: 로그인 유저만 extract 호출
 
   const sendMessage = useCallback(
     async (text: string, conversationId?: string) => {
@@ -94,8 +96,8 @@ export function useGatewayChat(sessionKey: string = "webchat", initialMessages: 
               setMessages((prev) => [...prev, assistantMsg]);
               setStreaming("");
               setStatus("idle");
-              // Haiku 메모리 추출 (fire-and-forget, 실패해도 무방)
-              if (conversationId) {
+              // Haiku 메모리 추출 (로그인 유저만, fire-and-forget)
+              if (conversationId && isLoggedIn) {
                 fetch("/api/memory/extract", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },

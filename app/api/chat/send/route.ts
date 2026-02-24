@@ -56,8 +56,18 @@ async function buildSafeContext(userId: string): Promise<string | null> {
   return parts.length > 0 ? `[사용자 정보]\n${parts.join("\n")}` : null;
 }
 
-// ── 대화 히스토리 로드 (세션 격리용) ──
-async function loadHistory(conversationId: string): Promise<{ role: string; content: string }[]> {
+// ── 대화 히스토리 로드 (소유권 검증 포함) ──
+async function loadHistory(conversationId: string, userId: string): Promise<{ role: string; content: string }[]> {
+  // Critical fix: user_id로 소유권 검증 → 타인의 conversationId 주입 방지
+  const { data: conv } = await supabaseServer
+    .from("conversations")
+    .select("id")
+    .eq("id", conversationId)
+    .eq("user_id", userId)
+    .single();
+
+  if (!conv) return []; // 소유권 없으면 빈 히스토리 반환
+
   const { data } = await supabaseServer
     .from("messages")
     .select("role, content")
@@ -127,12 +137,14 @@ export async function POST(req: NextRequest) {
       : null,
   ]);
 
-  // ── "기억해줘" 즉시 저장 (규칙 기반) ──
+  // ── "기억해줘" 즉시 저장 (규칙 기반, fire-and-forget) ──
   if (userId) {
     const toRemember = detectMemoryRequest(message);
     if (toRemember) {
-      const key = `user_note_${Date.now()}`;
-      await saveMemory(userId, key, toRemember, { category: "note", importance: 3, source: "user" });
+      // Medium fix: 내용 해시로 dedup (동일 내용 반복 저장 방지)
+      const key = `user_note_${Buffer.from(toRemember).toString("base64").slice(0, 16)}`;
+      saveMemory(userId, key, toRemember, { category: "note", importance: 3, source: "user" })
+        .catch(err => console.warn("[chat/send] saveMemory failed:", err));
     }
   }
 
@@ -143,11 +155,11 @@ export async function POST(req: NextRequest) {
   if (ragContext)    instructionParts.push(ragContext);
   const instructions = instructionParts.join("\n\n");
 
-  // ── 대화 히스토리 로드 (이전 세션 컨텍스트 오염 방지) ──
+  // ── 대화 히스토리 로드 (로그인 유저만, 소유권 검증) ──
   let historyInput: { role: string; content: string }[] = [];
-  if (conversationId) {
+  if (conversationId && userId) {
     try {
-      historyInput = await loadHistory(conversationId);
+      historyInput = await loadHistory(conversationId, userId);
     } catch (err) {
       console.warn("[chat/send] Failed to load history:", err);
     }

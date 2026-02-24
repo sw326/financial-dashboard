@@ -27,6 +27,9 @@ const KR_NAME_TO_SYMBOL = new Map<string, string>(
   Object.entries(KR_STOCK_NAMES).map(([sym, name]) => [name, sym])
 );
 
+// Medium fix: 매 요청마다 재정렬 방지 → 모듈 초기화 시 1회 정렬
+const KR_SORTED_NAMES = Array.from(KR_NAME_TO_SYMBOL.keys()).sort((a, b) => b.length - a.length);
+
 // ── 미국 주요 종목 별칭 ──
 const US_ALIASES: Record<string, string> = {
   애플: "AAPL", Apple: "AAPL",
@@ -69,9 +72,8 @@ export function extractSymbols(message: string): string[] {
     else if (KR_STOCK_NAMES[`${code}.KQ`]) found.add(`${code}.KQ`);
   }
 
-  // 3. 한국어 종목명 (긴 이름 우선 매칭)
-  const sortedNames = Array.from(KR_NAME_TO_SYMBOL.keys()).sort((a, b) => b.length - a.length);
-  for (const name of sortedNames) {
+  // 3. 한국어 종목명 (긴 이름 우선 — 모듈 초기화 시 캐싱됨)
+  for (const name of KR_SORTED_NAMES) {
     if (message.includes(name)) {
       found.add(KR_NAME_TO_SYMBOL.get(name)!);
     }

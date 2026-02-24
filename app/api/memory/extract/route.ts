@@ -16,7 +16,17 @@ export async function POST(req: NextRequest) {
   const { conversationId } = await req.json() as { conversationId?: string };
   if (!conversationId) return NextResponse.json({ ok: false }, { status: 400 });
 
-  // 최근 대화 로드 (최대 10턴)
+  // Critical fix: conversationId 소유권 검증 → 타인 대화 분석 방지
+  const { data: conv } = await supabaseServer
+    .from("conversations")
+    .select("id")
+    .eq("id", conversationId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!conv) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+
+  // 최근 대화 로드 (최대 20턴)
   const { data: messages } = await supabaseServer
     .from("messages")
     .select("role, content")

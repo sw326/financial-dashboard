@@ -128,9 +128,26 @@ export async function extractMemoriesWithHaiku(
     const text = data?.output?.[0]?.content?.[0]?.text ?? "";
 
     // JSON 파싱
-    const match = text.match(/\[[\s\S]*\]/);
+    const match = text.match(/\[[\s\S]*?\]/); // non-greedy → 첫 번째 배열만
     if (!match) return [];
-    return JSON.parse(match[0]);
+
+    // Medium fix: 추출 결과 엄격 검증 (프롬프트 인젝션 방지)
+    const ALLOWED_CATEGORIES = new Set(["preference", "pattern", "goal", "note"]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw: any[] = JSON.parse(match[0]);
+    return raw
+      .filter(
+        (item) =>
+          typeof item.key === "string" &&
+          typeof item.value === "string" &&
+          item.key.length <= 80 &&           // key 길이 제한
+          item.value.length <= 300 &&         // value 길이 제한
+          ALLOWED_CATEGORIES.has(item.category) && // category 열거형
+          Number.isInteger(item.importance) &&
+          item.importance >= 1 &&
+          item.importance <= 5             // importance 범위
+      )
+      .slice(0, 5); // 최대 5개
   } catch {
     return [];
   }
