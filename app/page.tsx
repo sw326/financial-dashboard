@@ -24,7 +24,7 @@ import { useQuotes } from "@/hooks/use-quotes";
 import { useRecentTrades } from "@/hooks/use-recent-trades";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { IndexCarousel } from "@/features/market/components/index-carousel";
-import MarketHeatmap from "@/features/market/components/market-heatmap";
+import { AlgorithmFeed } from "@/features/market/components/algorithm-feed";
 
 const Map = dynamic(() => import("@/components/Map"), { ssr: false });
 const KAKAO_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY || "";
@@ -73,7 +73,6 @@ function dealYmd() {
 
 /* ── 페이지 ── */
 export default function Home() {
-  const [heatmapMarket, setHeatmapMarket] = useState("kr");
   const { isLoggedIn } = useAuth();
 
   // CAROUSEL_SYMBOLS는 모듈 상수 → useMemo 불필요
@@ -104,38 +103,8 @@ export default function Home() {
         )}
       </section>
 
-      {/* ── 2. 시장 히트맵 ── */}
-      <section>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">시장 히트맵</CardTitle>
-            <CardAction>
-              <div className="flex gap-1 bg-muted rounded-lg p-1">
-                {[
-                  { value: "kr", label: "국장" },
-                  { value: "us", label: "미장" },
-                ].map((m) => (
-                  <Button
-                    key={m.value}
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      "rounded-md text-xs h-7",
-                      heatmapMarket === m.value && "bg-background shadow-sm"
-                    )}
-                    onClick={() => setHeatmapMarket(m.value)}
-                  >
-                    {m.label}
-                  </Button>
-                ))}
-              </div>
-            </CardAction>
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <MarketHeatmap market={heatmapMarket} />
-          </CardContent>
-        </Card>
-      </section>
+      {/* ── 2. 알고리즘 피드 (CHM-295) ── */}
+      <AlgorithmFeed isLoggedIn={isLoggedIn} />
 
       {/* ── 3. 증시 하이라이트 + 부동산 최근 거래 ── */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">

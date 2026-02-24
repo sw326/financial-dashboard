@@ -1,8 +1,9 @@
 import { NextRequest } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { supabaseServer } from "@/lib/supabase/admin";
-import { buildRagContext } from "@/features/chat/lib/chat-rag";
+import { buildRagContext, extractSymbols } from "@/features/chat/lib/chat-rag";
 import { loadUserMemories, formatMemoriesForContext, detectMemoryRequest, saveMemory } from "@/features/chat/lib/chat-memory";
+import { upsertInterests } from "@/features/chat/lib/chat-interests";
 
 const GATEWAY_URL = (process.env.GATEWAY_URL || "https://desktop-76g4sk0.tailcfd4f8.ts.net").replace(/^wss?:\/\//, "https://");
 const GATEWAY_TOKEN = process.env.GATEWAY_TOKEN || "";
@@ -169,6 +170,14 @@ export async function POST(req: NextRequest) {
           .catch(() => null)
       : null,
   ]);
+
+  // ── 관심사 upsert — fire-and-forget (CHM-294) ──
+  if (userId) {
+    const symbols = extractSymbols(message); // RAG 결과 재활용 (추가 네트워크 없음)
+    if (symbols.length > 0) {
+      upsertInterests(userId, symbols).catch(() => {}); // 실패해도 무시
+    }
+  }
 
   // ── "기억해줘" 즉시 저장 (규칙 기반, fire-and-forget) ──
   if (userId) {
