@@ -44,7 +44,7 @@ const navGroups = [
   {
     label: "대시보드",
     items: [
-      { title: "대시보드", url: "/", icon: LayoutDashboard },
+      { title: "피드", url: "/", icon: LayoutDashboard },
       { title: "증시", url: "/market", icon: BarChart3 },
       { title: "부동산", url: "/real-estate", icon: Building2 },
       { title: "관심종목", url: "/watchlist", icon: Star },

@@ -1,247 +1,61 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import dynamic from "next/dynamic";
-import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction, CardFooter } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
-import {
-  TrendingUp,
-  TrendingDown,
-  BarChart3,
-  Home as HomeIcon,
-  Map as MapIcon,
-  ExternalLink,
-  Star,
-  ClipboardList,
-  Trophy,
-  Lock,
-} from "lucide-react";
 import { useQuotes } from "@/hooks/use-quotes";
-import { useRecentTrades } from "@/hooks/use-recent-trades";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { IndexCarousel } from "@/features/market/components/index-carousel";
 import { AlgorithmFeed } from "@/features/market/components/algorithm-feed";
 
-const Map = dynamic(() => import("@/components/Map"), { ssr: false });
-const KAKAO_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY || "";
-
-/* ── 설정 ── */
 const CAROUSEL_SYMBOLS = [
-  { symbol: "^KS11", label: "코스피" },
-  { symbol: "^KQ11", label: "코스닥" },
-  { symbol: "^GSPC", label: "S&P 500" },
-  { symbol: "^IXIC", label: "나스닥" },
-  { symbol: "KRW=X", label: "USD/KRW" },
-  { symbol: "GC=F", label: "금" },
-  { symbol: "CL=F", label: "WTI유" },
+  { symbol: "^KS11",   label: "코스피"   },
+  { symbol: "^KQ11",   label: "코스닥"   },
+  { symbol: "^GSPC",   label: "S&P 500"  },
+  { symbol: "^IXIC",   label: "나스닥"   },
+  { symbol: "KRW=X",   label: "USD/KRW"  },
+  { symbol: "GC=F",    label: "금"       },
+  { symbol: "CL=F",    label: "WTI유"    },
   { symbol: "BTC-USD", label: "비트코인" },
 ];
 
-const HIGHLIGHT_SYMBOLS = [
-  "005930.KS",
-  "000660.KS",
-  "373220.KS",
-  "035420.KS",
-  "035720.KS",
-  "051910.KS",
-];
-
-const GANGNAM_CODE = "11680";
-
-const SHORTCUTS = [
-  { href: "/market",    icon: BarChart3,     label: "시장개요", requiresAuth: false },
-  { href: "/watchlist", icon: Star,           label: "관심종목", requiresAuth: true  },
-  { href: "/trend",     icon: TrendingDown,   label: "시세추이", requiresAuth: false },
-  { href: "/recent",    icon: ClipboardList,  label: "최근거래", requiresAuth: false },
-  { href: "/rank",      icon: Trophy,         label: "순위",     requiresAuth: false },
-];
-
-/* ── 유틸 ── */
-const colorClass = (v: number) => (v >= 0 ? "text-[var(--color-up)]" : "text-[var(--color-down)]");
-const sign = (v: number) => (v >= 0 ? "+" : "");
-const fmt = (v: number, digits = 2) =>
-  v.toLocaleString(undefined, { maximumFractionDigits: digits });
-
-function dealYmd() {
-  const d = new Date();
-  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-/* ── 페이지 ── */
-export default function Home() {
+export default function FeedPage() {
   const { isLoggedIn } = useAuth();
-
-  // CAROUSEL_SYMBOLS는 모듈 상수 → useMemo 불필요
-  const allSymbols = CAROUSEL_SYMBOLS.map((i) => i.symbol);
+  const allSymbols = useMemo(() => CAROUSEL_SYMBOLS.map((i) => i.symbol), []);
   const { data: carouselData = [], isLoading: loadCarousel } = useQuotes(allSymbols);
-  const { data: highlights = [], isLoading: loadHl } = useQuotes(HIGHLIGHT_SYMBOLS);
-  const { data: trades = [], isLoading: loadTrade } = useRecentTrades(GANGNAM_CODE, dealYmd(), 5);
 
-  const carouselIndices = useMemo(() => {
-    return carouselData.map((d) => {
+  const carouselIndices = useMemo(() =>
+    carouselData.map((d) => {
       const info = CAROUSEL_SYMBOLS.find((i) => i.symbol === d.symbol);
       return { ...d, name: info?.label || d.name };
-    });
-  }, [carouselData]);
+    }),
+  [carouselData]);
 
   return (
     <div className="space-y-6">
-      {/* ── 1. 지수/원자재 캐로셀 ── */}
-      <section>
-        {loadCarousel ? (
-          <div className="grid grid-cols-4 gap-2">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-16 rounded-lg" />
-            ))}
-          </div>
-        ) : (
-          <IndexCarousel indices={carouselIndices} />
-        )}
-      </section>
+      {/* 지수/원자재 캐로셀 */}
+      {loadCarousel ? (
+        <div className="grid grid-cols-4 gap-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 rounded-lg" />
+          ))}
+        </div>
+      ) : (
+        <IndexCarousel indices={carouselIndices} />
+      )}
 
-      {/* ── 2. 알고리즘 피드 (CHM-295) ── */}
+      {/* 알고리즘 피드 (무한 스크롤) */}
       <AlgorithmFeed isLoggedIn={isLoggedIn} />
 
-      {/* ── 3. 증시 하이라이트 + 부동산 최근 거래 ── */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <TrendingUp className="size-5 text-muted-foreground" />
-                증시 하이라이트
-              </span>
-              <Link href="/market" className="text-xs text-muted-foreground hover:text-foreground">
-                더보기 →
-              </Link>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loadHl ? (
-              <div className="space-y-2">
-                {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10" />)}
-              </div>
-            ) : (
-              <div className="divide-y">
-                {highlights.map((s) => (
-                  <Link
-                    key={s.symbol}
-                    href={`/stock?symbol=${encodeURIComponent(s.symbol)}`}
-                    className="flex items-center justify-between py-3 hover:bg-muted/50 -mx-2 px-2 rounded transition-colors"
-                  >
-                    <span className="text-sm font-medium truncate flex-1">{s.name}</span>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-sm font-bold tabular-nums">{fmt(s.price, 0)}</span>
-                      <Badge variant="outline" className={`text-xs ${colorClass(s.changePercent)} min-w-[68px] justify-center`}>
-                        {s.changePercent >= 0 ? <TrendingUp className="size-3 mr-1" /> : <TrendingDown className="size-3 mr-1" />}
-                        {sign(s.changePercent)}{s.changePercent.toFixed(2)}%
-                      </Badge>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <HomeIcon className="size-5 text-muted-foreground" />
-                최근 부동산 거래
-              </span>
-              <Link href="/recent?region=11680" className="text-xs text-muted-foreground hover:text-foreground">
-                더보기 →
-              </Link>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loadTrade ? (
-              <div className="space-y-2">
-                {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10" />)}
-              </div>
-            ) : trades.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">거래 데이터가 없습니다.</p>
-            ) : (
-              <div className="space-y-3">
-                {trades.map((t, i) => (
-                  <div key={i} className="flex items-start justify-between pb-3 border-b last:border-0 hover:bg-muted/30 -mx-2 px-2 py-2 rounded transition-colors">
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold">{t.aptName}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {t.dong} · <span className="tabular-nums">{t.area.toFixed(1)}㎡</span> · {t.floor}층
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold tabular-nums">{t.dealAmount.toLocaleString()}만원</p>
-                      <p className="text-xs text-muted-foreground mt-1 tabular-nums">
-                        {t.dealMonth}/{t.dealDay}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* ── 4. 지도 ── */}
-      <section>
-        <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapIcon className="size-5 text-muted-foreground" />
-              서울 부동산 지도
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="h-[400px]">
-              <Map kakaoKey={KAKAO_KEY} />
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* ── 5. 바로가기 ── */}
-      <section>
-        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-          <ExternalLink className="size-5 text-muted-foreground" />
-          바로가기
-        </h2>
-        <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
-          {SHORTCUTS.map(({ href, icon: Icon, label, requiresAuth }) => {
-            const locked = requiresAuth && !isLoggedIn;
-            return (
-              <Link key={href} href={locked ? "/auth/login" : href}>
-                <Card className={cn(
-                  "hover:shadow-md transition-shadow cursor-pointer relative",
-                  locked && "opacity-60"
-                )}>
-                  <CardContent className="p-4 text-center">
-                    <Icon className={cn(
-                      "size-8 mx-auto",
-                      locked ? "text-muted-foreground/50" : "text-muted-foreground"
-                    )} />
-                    <p className="text-sm mt-2 font-medium">{label}</p>
-                    {locked && (
-                      <span className="absolute top-2 right-2 flex items-center gap-0.5 text-[10px] text-muted-foreground/70">
-                        <Lock className="size-2.5" />
-                        로그인
-                      </span>
-                    )}
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
+      {/* 비로그인 안내 */}
+      {!isLoggedIn && (
+        <div className="text-center py-16 space-y-3">
+          <p className="text-4xl">🦞</p>
+          <p className="text-lg font-semibold">로그인하면 맞춤 피드가 생겨요</p>
+          <p className="text-sm text-muted-foreground">
+            채팅에서 관심 종목을 물어보면 여기에 개인화된 피드가 표시돼요.
+          </p>
         </div>
-      </section>
+      )}
     </div>
   );
 }

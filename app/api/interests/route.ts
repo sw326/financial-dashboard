@@ -1,15 +1,15 @@
 /**
- * GET /api/interests — 알고리즘 피드 데이터 (CHM-295)
- * 로그인: user_interests score DESC → Yahoo Finance 시세 조회
- * Cold start (interests = 0): trending 상위 종목 fallback
+ * GET /api/interests?page=1&limit=20
+ * 알고리즘 피드 페이지네이션 (CHM-295)
+ *
+ * 순서: 개인화(score DESC) → 소진되면 trending 블렌딩
  */
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { supabaseServer } from "@/lib/supabase/admin";
 import YahooFinance from "yahoo-finance2";
 
 const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
-const LIMIT = 10;
 
 interface FeedStock {
   symbol: string;
@@ -21,6 +21,7 @@ interface FeedStock {
 }
 
 async function fetchQuotes(symbols: string[]): Promise<FeedStock[]> {
+  if (!symbols.length) return [];
   const results = await Promise.allSettled(
     symbols.map(async (sym): Promise<FeedStock> => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -28,8 +29,8 @@ async function fetchQuotes(symbols: string[]): Promise<FeedStock[]> {
       const isKR = sym.endsWith(".KS") || sym.endsWith(".KQ");
       return {
         symbol: sym,
-        name:   q.shortName ?? q.longName ?? sym,
-        price:  q.regularMarketPrice ?? 0,
+        name: q.shortName ?? q.longName ?? sym,
+        price: q.regularMarketPrice ?? 0,
         change: q.regularMarketChange ?? 0,
         changePercent: q.regularMarketChangePercent ?? 0,
         isKR,
@@ -42,8 +43,12 @@ async function fetchQuotes(symbols: string[]): Promise<FeedStock[]> {
     .filter((q) => q.price > 0);
 }
 
-export async function GET() {
-  // 인증 확인
+export async function GET(req: NextRequest) {
+  const page  = Math.max(1, parseInt(req.nextUrl.searchParams.get("page")  ?? "1"));
+  const limit = Math.min(20, parseInt(req.nextUrl.searchParams.get("limit") ?? "20"));
+  const offset = (page - 1) * limit;
+
+  // 인증
   let userId: string | null = null;
   try {
     const supabase = await createSupabaseServer();
@@ -51,42 +56,65 @@ export async function GET() {
     if (user) userId = user.id;
   } catch { /* 비로그인 */ }
 
-  if (!userId) {
-    return NextResponse.json({ type: "guest", stocks: [] });
-  }
+  // 비로그인
+  if (!userId) return NextResponse.json({ type: "guest", stocks: [], hasMore: false });
 
-  // 관심사 조회 (score DESC)
-  const { data: interests } = await supabaseServer
+  // ── 개인화 구간: user_interests score DESC ──
+  const { data: interests, count: totalInterests } = await supabaseServer
     .from("user_interests")
-    .select("symbol, name, is_kr, score")
+    .select("symbol, name, is_kr, score", { count: "exact" })
     .eq("user_id", userId)
     .order("score", { ascending: false })
-    .limit(LIMIT);
+    .range(offset, offset + limit - 1);
 
-  // Cold start: interests 없으면 trending fallback
-  if (!interests?.length) {
-    const trendRes = await fetch(
-      `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/api/finance/trending?market=kr&limit=10`,
-      { next: { revalidate: 300 } }
-    ).catch(() => null);
+  const personalCount = totalInterests ?? 0;
+  const personalSymbols = (interests ?? [])
+    .map((i) => i.symbol)
+    .filter((s): s is string => !!s);
 
-    if (trendRes?.ok) {
-      const trendData = await trendRes.json();
-      const trendStocks = (trendData?.stocks ?? []).slice(0, LIMIT);
-      return NextResponse.json({ type: "trending", stocks: trendStocks });
-    }
-    return NextResponse.json({ type: "trending", stocks: [] });
+  if (personalSymbols.length === limit) {
+    // 개인화 결과만으로 페이지 채워짐
+    const quotes = await fetchQuotes(personalSymbols);
+    const symbolOrder = new Map(personalSymbols.map((s, i) => [s, i]));
+    quotes.sort((a, b) => (symbolOrder.get(a.symbol) ?? 99) - (symbolOrder.get(b.symbol) ?? 99));
+    return NextResponse.json({
+      type: "personalized",
+      stocks: quotes,
+      hasMore: offset + limit < personalCount,
+      page,
+    });
   }
 
-  // 실시간 시세 조회
-  const symbols = interests.map((i) => i.symbol).filter((s): s is string => !!s);
-  const quotes = await fetchQuotes(symbols);
+  // ── 개인화 소진 → trending 블렌딩 ──
+  const personalizedStocks = personalSymbols.length > 0
+    ? await fetchQuotes(personalSymbols) : [];
 
-  // 관심사 순서 유지 (score DESC)
-  const symbolOrder = new Map(
-    interests.filter((i) => i.symbol).map((i, idx) => [i.symbol as string, idx])
-  );
-  quotes.sort((a, b) => (symbolOrder.get(a.symbol) ?? 99) - (symbolOrder.get(b.symbol) ?? 99));
+  const trendNeeded = limit - personalizedStocks.length;
+  const excludeSymbols = new Set(personalSymbols);
 
-  return NextResponse.json({ type: "personalized", stocks: quotes });
+  // trending API 내부 직접 호출
+  const trendingOffset = Math.max(0, offset - personalCount);
+  const trendRes = await fetch(
+    `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/api/finance/trending?market=kr&limit=${trendNeeded + trendingOffset}`,
+    { next: { revalidate: 300 } }
+  ).catch(() => null);
+
+  let trendingStocks: FeedStock[] = [];
+  if (trendRes?.ok) {
+    const td = await trendRes.json();
+    const allTrending: FeedStock[] = (td?.stocks ?? [])
+      .filter((s: FeedStock) => !excludeSymbols.has(s.symbol))
+      .slice(trendingOffset, trendingOffset + trendNeeded);
+    trendingStocks = allTrending;
+  }
+
+  const combined = [...personalizedStocks, ...trendingStocks];
+  const type = personalizedStocks.length > 0 ? "personalized" : "trending";
+
+  return NextResponse.json({
+    type,
+    stocks: combined,
+    hasMore: trendingStocks.length === trendNeeded, // trending이 더 있으면 계속
+    page,
+  });
 }
