@@ -1,8 +1,8 @@
 "use client";
 
-import { ChatMessages } from "@/components/chat/chat-messages";
-import { ChatInput } from "@/components/chat/chat-input";
-import { useGatewayChat } from "@/hooks/use-gateway-chat";
+import { ChatMessages } from "@/features/chat/components/chat-messages";
+import { ChatInput } from "@/features/chat/components/chat-input";
+import { useGatewayChat } from "@/features/chat/hooks/use-gateway-chat";
 import { supabase } from "@/lib/supabase/browser";
 import { useCallback, useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";

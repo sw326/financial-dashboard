@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useTrades } from "@/hooks/useTrades";
+import { useTrades } from "@/features/real-estate/hooks/useTrades";
 import { formatAmount } from "@/lib/utils";
 import { AptDetailModal } from "@/components/apt-detail-modal";
 

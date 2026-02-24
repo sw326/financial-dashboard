@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { supabaseServer } from "@/lib/supabase/admin";
-import { buildRagContext } from "@/lib/chat-rag";
-import { loadUserMemories, formatMemoriesForContext, detectMemoryRequest, saveMemory } from "@/lib/chat-memory";
+import { buildRagContext } from "@/features/chat/lib/chat-rag";
+import { loadUserMemories, formatMemoriesForContext, detectMemoryRequest, saveMemory } from "@/features/chat/lib/chat-memory";
 
 const GATEWAY_URL = (process.env.GATEWAY_URL || "https://desktop-76g4sk0.tailcfd4f8.ts.net").replace(/^wss?:\/\//, "https://");
 const GATEWAY_TOKEN = process.env.GATEWAY_TOKEN || "";

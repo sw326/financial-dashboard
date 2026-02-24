@@ -22,9 +22,9 @@ import {
 } from "lucide-react";
 import { useQuotes } from "@/hooks/use-quotes";
 import { useRecentTrades } from "@/hooks/use-recent-trades";
-import { useAuth } from "@/hooks/use-auth";
-import { IndexCarousel } from "@/components/index-carousel";
-import MarketHeatmap from "@/components/market-heatmap";
+import { useAuth } from "@/features/auth/hooks/use-auth";
+import { IndexCarousel } from "@/features/market/components/index-carousel";
+import MarketHeatmap from "@/features/market/components/market-heatmap";
 
 const Map = dynamic(() => import("@/components/Map"), { ssr: false });
 const KAKAO_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY || "";

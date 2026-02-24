@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { ClipboardList } from "lucide-react";
-import TradeTable from "@/components/TradeTable";
-import FilterBar from "@/components/FilterBar";
+import TradeTable from "@/features/real-estate/components/TradeTable";
+import FilterBar from "@/features/real-estate/components/FilterBar";
 
 export default function RecentPage() {
   return (

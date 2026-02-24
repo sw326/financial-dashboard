@@ -5,7 +5,7 @@
  */
 
 import YahooFinance from "yahoo-finance2";
-import { KR_STOCK_NAMES } from "./kr-stock-names";
+import { KR_STOCK_NAMES } from "@/lib/kr-stock-names";
 
 const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 

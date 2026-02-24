@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { supabaseServer } from "@/lib/supabase/admin";
-import { extractMemoriesWithHaiku, saveMemory } from "@/lib/chat-memory";
+import { extractMemoriesWithHaiku, saveMemory } from "@/features/chat/lib/chat-memory";
 
 const GATEWAY_URL = (process.env.GATEWAY_URL || "https://desktop-76g4sk0.tailcfd4f8.ts.net").replace(/^wss?:\/\//, "https://");
 const GATEWAY_TOKEN = process.env.GATEWAY_TOKEN || "";

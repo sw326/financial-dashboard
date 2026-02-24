@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import RegionPicker from "@/components/RegionPicker";
+import RegionPicker from "@/features/real-estate/components/RegionPicker";
 
 const AREA_OPTIONS = [
   { value: "all", label: "전체 면적" },

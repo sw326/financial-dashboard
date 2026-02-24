@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation";
 import { Star, TrendingUp, TrendingDown, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { WatchlistButton } from "@/components/watchlist-button";
-import { useWatchlist } from "@/hooks/use-watchlist";
-import { useAuth } from "@/hooks/use-auth";
+import { WatchlistButton } from "@/features/watchlist/components/watchlist-button";
+import { useWatchlist } from "@/features/watchlist/hooks/use-watchlist";
+import { useAuth } from "@/features/auth/hooks/use-auth";
 import Link from "next/link";
 
 interface Quote {

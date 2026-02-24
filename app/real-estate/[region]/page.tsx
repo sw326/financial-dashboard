@@ -7,11 +7,11 @@ import { ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SEOUL_GU } from "@/lib/constants";
-import FilterBar from "@/components/FilterBar";
-import Charts from "@/components/Charts";
-import TradeTable from "@/components/TradeTable";
+import FilterBar from "@/features/real-estate/components/FilterBar";
+import Charts from "@/features/real-estate/components/Charts";
+import TradeTable from "@/features/real-estate/components/TradeTable";
 
-const RankChart = dynamic(() => import("@/components/RankChart"), {
+const RankChart = dynamic(() => import("@/features/real-estate/components/RankChart"), {
   loading: () => <Skeleton className="h-[400px]" />,
 });
 

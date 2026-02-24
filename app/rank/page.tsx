@@ -2,9 +2,9 @@ import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import { Trophy } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import FilterBar from "@/components/FilterBar";
+import FilterBar from "@/features/real-estate/components/FilterBar";
 
-const RankChart = dynamic(() => import("@/components/RankChart"), {
+const RankChart = dynamic(() => import("@/features/real-estate/components/RankChart"), {
   loading: () => <Skeleton className="h-[300px]" />,
 });
 

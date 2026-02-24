@@ -3,8 +3,8 @@
 import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useWatchlist } from "@/hooks/use-watchlist";
-import { useAuth } from "@/hooks/use-auth";
+import { useWatchlist } from "@/features/watchlist/hooks/use-watchlist";
+import { useAuth } from "@/features/auth/hooks/use-auth";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 

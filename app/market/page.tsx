@@ -8,9 +8,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { BarChart3 } from "lucide-react";
 import { useQuotes } from "@/hooks/use-quotes";
-import { useTrending } from "@/hooks/use-trending";
+import { useTrending } from "@/features/market/hooks/use-trending";
 import StockList from "@/components/stock-list";
-import { IndexCarousel } from "@/components/index-carousel";
+import { IndexCarousel } from "@/features/market/components/index-carousel";
 import type { MarketIndex } from "@/lib/types";
 
 const INDICES = [

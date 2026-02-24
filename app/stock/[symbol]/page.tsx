@@ -12,12 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TrendingUp, TrendingDown, BarChart3, Activity, Target, Landmark, PiggyBank, Users } from "lucide-react";
 import type { StockQuote } from "@/lib/types";
 import { useQuotes } from "@/hooks/use-quotes";
-import { useChart } from "@/hooks/use-chart";
-import { useSummary, type StockSummary } from "@/hooks/use-summary";
-import { useRealtime } from "@/hooks/use-realtime";
+import { useChart } from "@/features/stock/hooks/use-chart";
+import { useSummary, type StockSummary } from "@/features/stock/hooks/use-summary";
+import { useRealtime } from "@/features/stock/hooks/use-realtime";
 import { isKrMarketOpen, isUsMarketOpen } from "@/lib/market-hours";
-import { LightweightChart, MA_COLORS } from "@/components/lightweight-chart";
-import { WatchlistButton } from "@/components/watchlist-button";
+import { LightweightChart, MA_COLORS } from "@/features/stock/components/lightweight-chart";
+import { WatchlistButton } from "@/features/watchlist/components/watchlist-button";
 
 const MINUTE_OPTIONS = [
   { value: "1m", label: "1분" },

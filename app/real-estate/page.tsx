@@ -6,11 +6,11 @@ import dynamic from "next/dynamic";
 import { Building2, ChevronRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import FilterBar from "@/components/FilterBar";
-import TradeTable from "@/components/TradeTable";
+import FilterBar from "@/features/real-estate/components/FilterBar";
+import TradeTable from "@/features/real-estate/components/TradeTable";
 import { SEOUL_GU } from "@/lib/constants";
 
-const RankChart = dynamic(() => import("@/components/RankChart"), {
+const RankChart = dynamic(() => import("@/features/real-estate/components/RankChart"), {
   loading: () => <Skeleton className="h-[300px]" />,
 });
 

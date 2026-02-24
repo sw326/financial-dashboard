@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import YahooFinance from "yahoo-finance2";
 import { getKrStockName } from "@/lib/kr-stock-names";
-import { US_SECTORS } from "@/lib/us-sectors";
-import { getKrSector, INDUSTRY_CODE_MAP } from "@/lib/kr-sectors";
+import { US_SECTORS } from "@/features/market/us-sectors";
+import { getKrSector, INDUSTRY_CODE_MAP } from "@/features/market/kr-sectors";
 
 // Run in Seoul to access Naver API (blocks non-KR IPs)
 export const preferredRegion = "icn1";

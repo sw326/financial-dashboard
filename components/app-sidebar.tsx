@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { supabase } from "@/lib/supabase/browser"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/features/auth/hooks/use-auth"
 import { usePushNotification } from "@/hooks/use-push-notification"
 import { cn } from "@/lib/utils"
 

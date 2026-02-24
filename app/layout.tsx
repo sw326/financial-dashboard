@@ -8,7 +8,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import SearchCommand from "@/components/search-command";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { AuthButton } from "@/components/auth-button"
+import { AuthButton } from "@/features/auth/components/auth-button"
 import { Toaster } from "sonner"
 import { BarChart3, Building2, MessageSquare, Star } from "lucide-react";
 

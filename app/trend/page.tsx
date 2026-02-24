@@ -2,9 +2,9 @@ import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import { TrendingUp } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import FilterBar from "@/components/FilterBar";
+import FilterBar from "@/features/real-estate/components/FilterBar";
 
-const Charts = dynamic(() => import("@/components/Charts"), {
+const Charts = dynamic(() => import("@/features/real-estate/components/Charts"), {
   loading: () => <Skeleton className="h-[350px]" />,
 });
 

@@ -2,9 +2,9 @@
 
 import { useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
-import { ChatMessages } from "@/components/chat/chat-messages";
-import { ChatInput } from "@/components/chat/chat-input";
-import { useGatewayChat, ChatMessage } from "@/hooks/use-gateway-chat";
+import { ChatMessages } from "@/features/chat/components/chat-messages";
+import { ChatInput } from "@/features/chat/components/chat-input";
+import { useGatewayChat, ChatMessage } from "@/features/chat/hooks/use-gateway-chat";
 import { supabase } from "@/lib/supabase/browser";
 
 let msgIdCounter = 0;
