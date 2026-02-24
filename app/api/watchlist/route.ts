@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServer } from "@/lib/supabase-server";
+import { createSupabaseServer } from "@/lib/supabase/server";
 
 // GET /api/watchlist — 내 관심종목 목록
 export async function GET() {

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import { createSupabaseServer } from "@/lib/supabase-server";
-import { supabaseServer } from "@/lib/supabase-server-admin";
+import { createSupabaseServer } from "@/lib/supabase/server";
+import { supabaseServer } from "@/lib/supabase/admin";
 import { buildRagContext } from "@/lib/chat-rag";
 import { loadUserMemories, formatMemoriesForContext, detectMemoryRequest, saveMemory } from "@/lib/chat-memory";
 

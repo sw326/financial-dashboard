@@ -3,7 +3,7 @@
  * OpenClaw MEMORY.md 구조를 Supabase DB로 이식
  */
 
-import { supabaseServer } from "./supabase-server-admin";
+import { supabaseServer } from "@/lib/supabase/admin";
 
 export interface UserMemory {
   id: string;

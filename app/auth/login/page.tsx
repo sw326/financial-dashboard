@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { createSupabaseBrowser } from "@/lib/supabase-browser";
+import { createSupabaseBrowser } from "@/lib/supabase/browser";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Suspense } from "react";

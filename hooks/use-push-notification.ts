@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { createSupabaseBrowser } from "@/lib/supabase-browser";
+import { createSupabaseBrowser } from "@/lib/supabase/browser";
 
 const PUSH_SERVER_URL = "https://desktop-76g4sk0.tailcfd4f8.ts.net/push";
 // CHM-260: 빌드 타임이 아닌 런타임 체크 (! assertion 제거)

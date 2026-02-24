@@ -3,7 +3,7 @@
 import { ChatMessages } from "@/components/chat/chat-messages";
 import { ChatInput } from "@/components/chat/chat-input";
 import { useGatewayChat } from "@/hooks/use-gateway-chat";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/browser";
 import { useCallback, useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";

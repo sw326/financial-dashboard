@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServer } from "@/lib/supabase-server";
+import { createSupabaseServer } from "@/lib/supabase/server";
 
 // DELETE /api/watchlist/:symbol — 관심종목 제거
 export async function DELETE(

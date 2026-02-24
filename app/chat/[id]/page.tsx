@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { ChatMessages } from "@/components/chat/chat-messages";
 import { ChatInput } from "@/components/chat/chat-input";
 import { useGatewayChat, ChatMessage } from "@/hooks/use-gateway-chat";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/browser";
 
 let msgIdCounter = 0;
 function genId() { return `hist_${Date.now()}_${++msgIdCounter}`; }
