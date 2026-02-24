@@ -23,12 +23,12 @@ shared/
 
 ## 실행 순서
 - [x] CHM-274: 데드코드 삭제 (chat-sidebar.tsx, sparkline.tsx)
-- [ ] CHM-275: Supabase SSOT → lib/supabase/ 통합 (4→3파일)
-- [ ] CHM-276: market 도메인 (hooks + components)
-- [ ] CHM-277: stock 도메인
-- [ ] CHM-278: real-estate 도메인
-- [ ] CHM-279: watchlist + chat + auth 도메인
-- [ ] CHM-281: 타입/상수 정리
+- [x] CHM-275: Supabase SSOT → lib/supabase/ 통합 (4→3파일)
+- [x] CHM-276: market 도메인 (hooks + components)
+- [x] CHM-277: stock 도메인
+- [x] CHM-278: real-estate 도메인
+- [x] CHM-279: watchlist + chat + auth 도메인
+- [x] CHM-281: 타입/상수 정리
 
 ## 마이그레이션 원칙
 1. 각 단계마다 `tsc --noEmit` 통과 확인
