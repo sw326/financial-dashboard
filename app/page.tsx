@@ -15,12 +15,14 @@ import {
   Home as HomeIcon,
   Map as MapIcon,
   ExternalLink,
-  LineChart,
+  Star,
   ClipboardList,
   Trophy,
+  Lock,
 } from "lucide-react";
 import { useQuotes } from "@/hooks/use-quotes";
 import { useRecentTrades } from "@/hooks/use-recent-trades";
+import { useAuth } from "@/hooks/use-auth";
 import { IndexCarousel } from "@/components/index-carousel";
 import MarketHeatmap from "@/components/market-heatmap";
 
@@ -51,11 +53,11 @@ const HIGHLIGHT_SYMBOLS = [
 const GANGNAM_CODE = "11680";
 
 const SHORTCUTS = [
-  { href: "/market", icon: BarChart3, label: "시장개요", group: "증시" },
-  { href: "/stock", icon: LineChart, label: "종목차트", group: "증시" },
-  { href: "/trend", icon: TrendingDown, label: "시세추이", group: "부동산" },
-  { href: "/recent", icon: ClipboardList, label: "최근거래", group: "부동산" },
-  { href: "/rank", icon: Trophy, label: "순위", group: "부동산" },
+  { href: "/market",    icon: BarChart3,     label: "시장개요", requiresAuth: false },
+  { href: "/watchlist", icon: Star,           label: "관심종목", requiresAuth: true  },
+  { href: "/trend",     icon: TrendingDown,   label: "시세추이", requiresAuth: false },
+  { href: "/recent",    icon: ClipboardList,  label: "최근거래", requiresAuth: false },
+  { href: "/rank",      icon: Trophy,         label: "순위",     requiresAuth: false },
 ];
 
 /* ── 유틸 ── */
@@ -72,6 +74,7 @@ function dealYmd() {
 /* ── 페이지 ── */
 export default function Home() {
   const [heatmapMarket, setHeatmapMarket] = useState("kr");
+  const { isLoggedIn } = useAuth();
 
   // CAROUSEL_SYMBOLS는 모듈 상수 → useMemo 불필요
   const allSymbols = CAROUSEL_SYMBOLS.map((i) => i.symbol);
@@ -243,16 +246,31 @@ export default function Home() {
           바로가기
         </h2>
         <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
-          {SHORTCUTS.map(({ href, icon: Icon, label }) => (
-            <Link key={href} href={href}>
-              <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                <CardContent className="p-4 text-center">
-                  <Icon className="size-8 mx-auto text-muted-foreground" />
-                  <p className="text-sm mt-2 font-medium">{label}</p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+          {SHORTCUTS.map(({ href, icon: Icon, label, requiresAuth }) => {
+            const locked = requiresAuth && !isLoggedIn;
+            return (
+              <Link key={href} href={locked ? "/auth/login" : href}>
+                <Card className={cn(
+                  "hover:shadow-md transition-shadow cursor-pointer relative",
+                  locked && "opacity-60"
+                )}>
+                  <CardContent className="p-4 text-center">
+                    <Icon className={cn(
+                      "size-8 mx-auto",
+                      locked ? "text-muted-foreground/50" : "text-muted-foreground"
+                    )} />
+                    <p className="text-sm mt-2 font-medium">{label}</p>
+                    {locked && (
+                      <span className="absolute top-2 right-2 flex items-center gap-0.5 text-[10px] text-muted-foreground/70">
+                        <Lock className="size-2.5" />
+                        로그인
+                      </span>
+                    )}
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       </section>
     </div>
