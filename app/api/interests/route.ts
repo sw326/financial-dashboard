@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { supabaseServer } from "@/lib/supabase/admin";
+import { getHotKrStocks } from "@/lib/market-stocks";
 import YahooFinance from "yahoo-finance2";
 
 const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
@@ -49,16 +50,19 @@ async function fetchQuotes(symbols: string[]): Promise<FeedStock[]> {
 }
 
 async function getTrending(exclude: Set<string>, limit: number, offset: number): Promise<FeedStock[]> {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  const res = await fetch(
-    `${siteUrl}/api/finance/trending?market=kr&limit=${limit + offset}`,
-    { next: { revalidate: 300 } }
-  ).catch(() => null);
-  if (!res?.ok) return [];
-  const td = await res.json();
-  return (td?.stocks ?? [] as FeedStock[])
-    .filter((s: FeedStock) => !exclude.has(s.symbol))
-    .slice(offset, offset + limit);
+  // HTTP 내부 호출 제거 → 직접 함수 호출 (Vercel 환경 변수 의존 없음)
+  const stocks = await getHotKrStocks(limit + offset + exclude.size);
+  return stocks
+    .filter((s) => !exclude.has(s.symbol))
+    .slice(offset, offset + limit)
+    .map((s) => ({
+      symbol: s.symbol,
+      name: s.name,
+      price: s.price,
+      change: s.change,
+      changePercent: s.changePercent,
+      isKR: s.isKR ?? true,
+    }));
 }
 
 // interests 수 → 블렌딩 비율 (CHM-296)
