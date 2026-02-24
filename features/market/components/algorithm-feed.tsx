@@ -7,9 +7,10 @@
 import { useEffect, useRef } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { TrendingUp, TrendingDown, MessageSquare, Sparkles, Loader2 } from "lucide-react";
+import { TrendingUp, TrendingDown, MessageSquare, Sparkles, Loader2, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useWatchlist } from "@/features/watchlist/hooks/use-watchlist";
 
 interface FeedStock {
   symbol: string;
@@ -18,6 +19,8 @@ interface FeedStock {
   change: number;
   changePercent: number;
   isKR?: boolean;
+  volume?: number;
+  marketCap?: number;
 }
 
 interface FeedPage {
@@ -33,57 +36,110 @@ async function fetchFeedPage(page: number): Promise<FeedPage> {
   return res.json();
 }
 
-/* ── 세로 피드 카드 ── */
-function FeedCard({ stock }: { stock: FeedStock }) {
+/** 거래대금 포맷 (volume * price → 억 단위) */
+function fmtVolAmt(volume?: number, price?: number): string | null {
+  if (!volume || !price) return null;
+  const amt = volume * price;
+  if (amt >= 1_000_000_000_000) return `${(amt / 1_000_000_000_000).toFixed(1)}조`;
+  if (amt >= 100_000_000)       return `${Math.round(amt / 100_000_000)}억`;
+  return null;
+}
+
+/* ── 피드 카드 ── */
+function FeedCard({
+  stock, rank, isLoggedIn, symbolSet, onToggle,
+}: {
+  stock: FeedStock;
+  rank: number;
+  isLoggedIn: boolean;
+  symbolSet: Set<string>;
+  onToggle: (symbol: string, name: string) => void;
+}) {
   const up = stock.changePercent >= 0;
   const priceStr = stock.isKR
     ? `${stock.price.toLocaleString()}원`
     : `$${stock.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-  const changeStr = stock.isKR
-    ? `${stock.change >= 0 ? "+" : ""}${stock.change.toLocaleString()}원`
-    : `${stock.change >= 0 ? "+" : ""}${stock.change.toFixed(2)}`;
+  const volAmt = fmtVolAmt(stock.volume, stock.price);
+  const isWatched = symbolSet.has(stock.symbol);
+
+  const handleStar = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isLoggedIn) return;
+    onToggle(stock.symbol, stock.name);
+  };
 
   return (
-    <Link
-      href={`/stock/${stock.symbol}`}
-      className="flex items-center justify-between px-4 py-3.5 hover:bg-muted/50 transition-colors -mx-4 rounded-lg"
-    >
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold truncate">{stock.name}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {stock.symbol.replace(/\.(KS|KQ)$/, "")}
-          <span className={cn("ml-2 text-[10px] px-1 py-0.5 rounded font-medium",
-            stock.isKR ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                       : "bg-purple-500/10 text-purple-600 dark:text-purple-400")}>
-            {stock.isKR ? "KR" : "US"}
-          </span>
-        </p>
-      </div>
-      <div className="text-right shrink-0 ml-4">
+    <div className="flex items-center gap-2 py-2 hover:bg-muted/40 transition-colors -mx-2 px-2 rounded-lg group">
+      {/* 순위 */}
+      <span className="w-6 text-center text-xs text-muted-foreground/60 tabular-nums shrink-0">{rank}</span>
+
+      {/* 즐겨찾기 */}
+      {isLoggedIn && (
+        <button onClick={handleStar} className="shrink-0 p-0.5 -ml-1">
+          <Star className={cn("w-3.5 h-3.5 transition-colors",
+            isWatched ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/40 group-hover:text-muted-foreground")} />
+        </button>
+      )}
+
+      {/* 종목명 */}
+      <Link href={`/stock/${stock.symbol}`} className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">{stock.name}</p>
+        <p className="text-[11px] text-muted-foreground/60 tabular-nums">{stock.symbol.replace(/\.(KS|KQ)$/, "")}</p>
+      </Link>
+
+      {/* 거래대금 (데스크탑만) */}
+      {volAmt && (
+        <span className="hidden md:block text-xs text-muted-foreground tabular-nums w-16 text-right shrink-0">
+          {volAmt}
+        </span>
+      )}
+
+      {/* 등락률 뱃지 */}
+      <span className={cn(
+        "text-xs font-semibold tabular-nums px-1.5 py-0.5 rounded shrink-0 w-[72px] text-center",
+        up ? "bg-red-500/10 text-red-500" : "bg-blue-500/10 text-blue-500"
+      )}>
+        {up ? "+" : ""}{stock.changePercent.toFixed(2)}%
+      </span>
+
+      {/* 현재가 */}
+      <Link href={`/stock/${stock.symbol}`} className="text-right shrink-0 w-28">
         <p className="text-sm font-bold tabular-nums">{priceStr}</p>
-        <p className={cn("flex items-center justify-end gap-1 text-xs font-medium tabular-nums mt-0.5",
+        <p className={cn("text-[11px] tabular-nums",
           up ? "text-red-500" : "text-blue-500")}>
-          {up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-          {changeStr} ({up ? "+" : ""}{stock.changePercent.toFixed(2)}%)
+          {stock.change >= 0 ? "+" : ""}{stock.isKR ? stock.change.toLocaleString() + "원" : stock.change.toFixed(2)}
         </p>
-      </div>
-    </Link>
+      </Link>
+    </div>
+  );
+}
+
+/* ── 컬럼 헤더 ── */
+function FeedHeader() {
+  return (
+    <div className="flex items-center gap-2 py-1.5 -mx-2 px-2 text-xs text-muted-foreground/60 border-b mb-1">
+      <span className="w-6 shrink-0" />
+      <span className="flex-1">종목</span>
+      <span className="hidden md:block w-16 text-right shrink-0">거래대금</span>
+      <span className="w-[72px] text-center shrink-0">등락률</span>
+      <span className="w-28 text-right shrink-0">현재가</span>
+    </div>
   );
 }
 
 function FeedSkeleton() {
   return (
-    <div className="space-y-1">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="flex items-center justify-between px-4 py-3.5">
-          <div className="space-y-2 flex-1">
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-3 w-16" />
+    <div className="space-y-0.5">
+      {Array.from({ length: 10 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 py-2">
+          <Skeleton className="w-6 h-3 rounded" />
+          <div className="flex-1 space-y-1.5">
+            <Skeleton className="h-3.5 w-28" />
+            <Skeleton className="h-3 w-14" />
           </div>
-          <div className="space-y-2 text-right">
-            <Skeleton className="h-4 w-20 ml-auto" />
-            <Skeleton className="h-3 w-16 ml-auto" />
-          </div>
+          <Skeleton className="h-5 w-16 rounded" />
+          <Skeleton className="h-3.5 w-24" />
         </div>
       ))}
     </div>
@@ -96,6 +152,7 @@ interface Props {
 
 export function AlgorithmFeed({ isLoggedIn }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { symbolSet, toggle } = useWatchlist();
 
   const {
     data,
@@ -149,13 +206,25 @@ export function AlgorithmFeed({ isLoggedIn }: Props) {
       </div>
 
       {/* 피드 목록 */}
-      <div className="divide-y divide-border/50">
+      <div>
         {isLoading ? (
           <FeedSkeleton />
         ) : allStocks.length === 0 ? (
           <p className="text-sm text-muted-foreground py-8 text-center">데이터를 불러오는 중이에요</p>
         ) : (
-          allStocks.map((stock, i) => <FeedCard key={`${stock.symbol}-${i}`} stock={stock} />)
+          <>
+            <FeedHeader />
+            {allStocks.map((stock, i) => (
+              <FeedCard
+                key={`${stock.symbol}-${i}`}
+                stock={stock}
+                rank={i + 1}
+                isLoggedIn={isLoggedIn}
+                symbolSet={symbolSet}
+                onToggle={toggle}
+              />
+            ))}
+          </>
         )}
       </div>
 

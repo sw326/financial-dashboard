@@ -24,6 +24,8 @@ interface FeedStock {
   change: number;
   changePercent: number;
   isKR: boolean;
+  volume?: number;
+  marketCap?: number;
 }
 
 async function fetchQuotes(symbols: string[]): Promise<FeedStock[]> {
@@ -62,6 +64,8 @@ async function getTrending(exclude: Set<string>, limit: number, offset: number):
       change: s.change,
       changePercent: s.changePercent,
       isKR: s.isKR ?? true,
+      volume: s.volume,
+      marketCap: s.marketCap,
     }));
 }
 
