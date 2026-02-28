@@ -13,7 +13,7 @@ interface UserDocument {
   name: string;
   type: "pdf" | "txt" | "url" | "note";
   size_bytes: number;
-  status: "processing" | "ready" | "error";
+  status: "processing" | "ready" | "ready_no_search" | "error";
   chunk_count: number;
   created_at: string;
   source_url?: string;
@@ -32,12 +32,14 @@ const TYPE_ICON: Record<string, typeof FileText> = {
 const STATUS_ICON = {
   processing: Loader2,
   ready: CheckCircle,
+  ready_no_search: CheckCircle,
   error: AlertCircle,
 };
 
 const STATUS_COLOR = {
   processing: "text-muted-foreground",
   ready: "text-green-500",
+  ready_no_search: "text-yellow-500",
   error: "text-destructive",
 };
 
@@ -189,12 +191,12 @@ export default function DocumentsPage() {
                     {doc.chunk_count > 0 && <span className="text-xs text-muted-foreground">· {doc.chunk_count}청크</span>}
                     <Badge variant="outline" className="text-xs py-0 px-1.5">
                       <SIcon className={`size-3 mr-1 ${STATUS_COLOR[doc.status]} ${doc.status === "processing" ? "animate-spin" : ""}`} />
-                      {doc.status === "processing" ? "처리 중" : doc.status === "ready" ? "완료" : "오류"}
+                      {doc.status === "processing" ? "처리 중" : doc.status === "ready" ? "완료" : doc.status === "ready_no_search" ? "검색불가" : "오류"}
                     </Badge>
                   </div>
                 </div>
                 <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => deleteMutation.mutate(doc.id)}>
+                  onClick={() => { if (confirm(`"${doc.name}" 문서를 삭제할까요?`)) deleteMutation.mutate(doc.id); }}>
                   <Trash2 className="size-4" />
                 </Button>
               </div>

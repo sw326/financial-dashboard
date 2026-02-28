@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { supabaseServer } from "@/lib/supabase/admin";
 import { parsePdf, chunkText } from "@/lib/document-parser";
-import { embedBatch } from "@/lib/jina-embeddings";
+import { embedBatchWithFallback } from "@/lib/jina-embeddings";
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
-const QUOTA_BYTES   = 52_428_800;        // 50MB
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
+const QUOTA_BYTES   = 52_428_800;
 
-// GET /api/documents — 목록 + 스토리지 사용량
+// GET: 문서 목록 + 스토리지 사용량
 export async function GET() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -27,25 +27,15 @@ export async function GET() {
   });
 }
 
-// POST /api/documents — 파일 업로드 (multipart)
+// POST: 파일 업로드 (multipart)
 export async function POST(req: NextRequest) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // 용량 체크
-  const { data: profile } = await supabaseServer
-    .from("user_profiles")
-    .select("storage_used_bytes, storage_quota_bytes")
-    .eq("user_id", user.id)
-    .single();
-
-  const used  = profile?.storage_used_bytes  ?? 0;
-  const quota = profile?.storage_quota_bytes ?? QUOTA_BYTES;
-
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
-  const note = formData.get("note") as string | null; // 직접 텍스트 입력
+  const note = formData.get("note") as string | null;
 
   let rawText = "";
   let docName = "";
@@ -56,26 +46,43 @@ export async function POST(req: NextRequest) {
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json({ error: "파일이 너무 큽니다 (최대 20MB)" }, { status: 400 });
     }
+
+    // [Critical] 용량 체크를 INSERT 전에
+    const { data: profile } = await supabaseServer
+      .from("user_profiles").select("storage_used_bytes, storage_quota_bytes")
+      .eq("user_id", user.id).single();
+    const used  = profile?.storage_used_bytes  ?? 0;
+    const quota = profile?.storage_quota_bytes ?? QUOTA_BYTES;
     if (used + file.size > quota) {
       return NextResponse.json({ error: "스토리지 용량이 부족합니다" }, { status: 400 });
     }
 
     sizeBytes = file.size;
-    docName = file.name;
+    docName   = file.name;
     const buffer = Buffer.from(await file.arrayBuffer());
 
     if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
-      docType  = "pdf";
-      rawText  = await parsePdf(buffer);
+      docType = "pdf";
+      rawText = await parsePdf(buffer);
     } else {
-      docType  = "txt";
-      rawText  = buffer.toString("utf-8");
+      docType = "txt";
+      rawText = buffer.toString("utf-8");
     }
   } else if (note) {
     rawText   = note;
     docName   = `메모 ${new Date().toLocaleDateString("ko-KR")}`;
     docType   = "note";
     sizeBytes = Buffer.byteLength(note, "utf-8");
+
+    // 용량 체크
+    const { data: profile } = await supabaseServer
+      .from("user_profiles").select("storage_used_bytes, storage_quota_bytes")
+      .eq("user_id", user.id).single();
+    const used  = profile?.storage_used_bytes  ?? 0;
+    const quota = profile?.storage_quota_bytes ?? QUOTA_BYTES;
+    if (used + sizeBytes > quota) {
+      return NextResponse.json({ error: "스토리지 용량이 부족합니다" }, { status: 400 });
+    }
   } else {
     return NextResponse.json({ error: "파일 또는 텍스트가 필요합니다" }, { status: 400 });
   }
@@ -84,18 +91,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "텍스트를 추출할 수 없습니다" }, { status: 400 });
   }
 
-  // 문서 레코드 생성
+  // [Critical] 용량 선차감
+  await supabaseServer.rpc("increment_storage_usage", { p_user_id: user.id, p_bytes: sizeBytes });
+
   const { data: doc, error: docErr } = await supabaseServer
     .from("user_documents")
     .insert({ user_id: user.id, name: docName, type: docType, size_bytes: sizeBytes, status: "processing" })
-    .select()
-    .single();
+    .select().single();
 
   if (docErr || !doc) {
+    await supabaseServer.rpc("increment_storage_usage", { p_user_id: user.id, p_bytes: -sizeBytes });
     return NextResponse.json({ error: "문서 저장 실패" }, { status: 500 });
   }
 
-  // 비동기로 청킹 + 임베딩 처리
+  // [High] 비동기 처리 + 에러 롤백
   processDocument(doc.id, user.id, rawText, sizeBytes).catch(console.error);
 
   return NextResponse.json({ document: doc });
@@ -104,33 +113,32 @@ export async function POST(req: NextRequest) {
 async function processDocument(docId: string, userId: string, text: string, sizeBytes: number) {
   try {
     const chunks = chunkText(text);
-    const embeddings = await embedBatch(chunks);
+    // [Medium] Jina 실패해도 문서 저장 허용 (검색만 비활성화)
+    const { embeddings, failed: embFailed } = await embedBatchWithFallback(chunks);
 
-    const rows = chunks.map((content, i) => ({
-      document_id: docId,
-      user_id:     userId,
-      content,
-      embedding:   JSON.stringify(embeddings[i]), // pgvector는 JSON 배열 문자열로
-      chunk_index: i,
-    }));
-
-    await supabaseServer.from("document_chunks").insert(rows);
+    await supabaseServer.from("document_chunks").insert(
+      chunks.map((content, i) => ({
+        document_id: docId,
+        user_id:     userId,
+        content,
+        embedding:   JSON.stringify(embeddings[i]),
+        chunk_index: i,
+      }))
+    );
 
     await supabaseServer
       .from("user_documents")
-      .update({ status: "ready", chunk_count: chunks.length })
+      .update({
+        status: embFailed ? "ready_no_search" : "ready",
+        chunk_count: chunks.length,
+      })
       .eq("id", docId);
-
-    // 스토리지 사용량 업데이트
-    await supabaseServer.rpc("increment_storage_usage", {
-      p_user_id: userId,
-      p_bytes:   sizeBytes,
-    });
   } catch (e) {
-    console.error("문서 처리 오류:", e);
-    await supabaseServer
-      .from("user_documents")
-      .update({ status: "error" })
-      .eq("id", docId);
+    console.error("[documents] processDocument 실패:", e);
+    await Promise.all([
+      supabaseServer.from("user_documents").update({ status: "error" }).eq("id", docId),
+      // 실패 시 선차감된 용량 롤백
+      supabaseServer.rpc("increment_storage_usage", { p_user_id: userId, p_bytes: -sizeBytes }),
+    ]);
   }
 }

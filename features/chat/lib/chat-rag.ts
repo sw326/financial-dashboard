@@ -107,8 +107,18 @@ interface QuoteResult {
 async function fetchQuotes(symbols: string[]): Promise<QuoteResult[]> {
   const results = await Promise.allSettled(
     symbols.map(async (sym): Promise<QuoteResult> => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const q: any = await yf.quote(sym);
+      interface YFQuote {
+        regularMarketPrice?: number;
+        regularMarketChange?: number;
+        regularMarketChangePercent?: number;
+        regularMarketVolume?: number;
+        fiftyTwoWeekHigh?: number;
+        fiftyTwoWeekLow?: number;
+        shortName?: string;
+        longName?: string;
+        currency?: string;
+      }
+      const q = (await yf.quote(sym)) as YFQuote;
       const isKR = sym.endsWith(".KS") || sym.endsWith(".KQ");
       return {
         symbol: sym,
