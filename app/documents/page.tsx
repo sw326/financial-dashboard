@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/features/auth/hooks/use-auth";
 import { FileText, Globe, Trash2, Upload, Plus, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,7 +46,15 @@ const STATUS_COLOR = {
 };
 
 export default function DocumentsPage() {
+  const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
   const qc = useQueryClient();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/auth/login");
+    }
+  }, [user, authLoading, router]);
   const fileRef = useRef<HTMLInputElement>(null);
   const [urlInput, setUrlInput] = useState("");
   const [showUrlInput, setShowUrlInput] = useState(false);
@@ -104,6 +114,14 @@ export default function DocumentsPage() {
     uploadMutation.mutate(fd);
     setNoteInput(""); setShowNoteInput(false);
   };
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   const storage = data?.storage;
   const usedPct = storage ? Math.round((storage.used / storage.quota) * 100) : 0;
