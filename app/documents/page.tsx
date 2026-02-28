@@ -108,12 +108,12 @@ export default function DocumentsPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold">문서함</h1>
           <p className="text-sm text-muted-foreground mt-0.5">업로드한 문서를 AI 채팅에서 참조합니다</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => setShowUrlInput(!showUrlInput)}>
             <Globe className="size-4 mr-1" /> URL
           </Button>
