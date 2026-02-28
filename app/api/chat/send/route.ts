@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { supabaseServer } from "@/lib/supabase/admin";
-import { buildRagContext, extractSymbols } from "@/features/chat/lib/chat-rag";
+import { buildRagContext, extractSymbols, searchUserDocuments } from "@/features/chat/lib/chat-rag";
 import { loadUserMemories, formatMemoriesForContext, detectMemoryRequest, saveMemory } from "@/features/chat/lib/chat-memory";
 import { upsertInterests } from "@/features/chat/lib/chat-interests";
 
@@ -174,11 +174,14 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 메모리 읽기 + RAG 병렬 실행 ──
-  const [ragContext, memoryContext] = await Promise.all([
+  const [ragContext, docContext, memoryContext] = await Promise.all([
     buildRagContext(message).catch((err) => {
       console.warn("[chat/send] RAG failed:", err);
       return null;
     }),
+    userId
+      ? searchUserDocuments(message, userId).catch(() => null)
+      : null,
     userId
       ? loadUserMemories(userId)
           .then(formatMemoriesForContext)
@@ -210,6 +213,7 @@ export async function POST(req: NextRequest) {
   if (userContext)   instructionParts.push(userContext);
   if (memoryContext) instructionParts.push(memoryContext);
   if (ragContext)    instructionParts.push(ragContext);
+  if (docContext)    instructionParts.push(docContext);
   const instructions = instructionParts.join("\n\n");
 
   // ── 대화 히스토리 로드 (로그인 유저만, 소유권 검증) ──

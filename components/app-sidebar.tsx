@@ -16,7 +16,7 @@ import {
   BellOff,
   LogIn,
   Star,
-} from "lucide-react"
+  FolderOpen } from "lucide-react"
 
 import {
   Sidebar,
@@ -54,6 +54,7 @@ const navGroups = [
     label: "AI",
     items: [
       { title: "채팅", url: "/chat", icon: MessageSquare },
+      { title: "문서함", url: "/documents", icon: FolderOpen },
     ],
   },
 ]

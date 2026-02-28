@@ -175,3 +175,35 @@ export async function buildRagContext(message: string): Promise<string | null> {
 
   return formatQuotes(quotes, timestamp);
 }
+
+/**
+ * 유저 문서 검색 (pgvector 코사인 유사도)
+ * Jina AI v3 임베딩으로 관련 청크 top 3 반환
+ */
+export async function searchUserDocuments(query: string, userId: string): Promise<string | null> {
+  try {
+    const { embedQuery } = await import("@/lib/jina-embeddings");
+    const { supabaseServer } = await import("@/lib/supabase/admin");
+
+    const queryEmbedding = await embedQuery(query);
+
+    // pgvector 코사인 유사도 검색
+    const { data: chunks } = await supabaseServer.rpc("search_document_chunks", {
+      p_user_id:  userId,
+      p_embedding: JSON.stringify(queryEmbedding),
+      p_limit:    3,
+      p_threshold: 0.5,
+    });
+
+    if (!chunks || chunks.length === 0) return null;
+
+    const lines = (chunks as { content: string; document_name: string }[]).map(
+      (c) => `[${c.document_name}]\n${c.content}`
+    );
+
+    return `## 관련 문서 컨텍스트\n${lines.join("\n\n---\n\n")}`;
+  } catch (e) {
+    console.error("문서 검색 오류:", e);
+    return null;
+  }
+}
