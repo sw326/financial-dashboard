@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/features/auth/hooks/use-auth";
-import { FileText, Globe, Trash2, Upload, Plus, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import { FileText, Globe, Trash2, Upload, Plus, AlertCircle, CheckCircle, Loader2, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -13,7 +13,8 @@ import { Badge } from "@/components/ui/badge";
 interface UserDocument {
   id: string;
   name: string;
-  type: "pdf" | "txt" | "url" | "note";
+  type: "pdf" | "txt" | "url" | "note" | "image";
+  storage_path?: string;
   size_bytes: number;
   status: "processing" | "ready" | "ready_no_search" | "error";
   chunk_count: number;
@@ -28,7 +29,7 @@ function formatBytes(bytes: number) {
 }
 
 const TYPE_ICON: Record<string, typeof FileText> = {
-  pdf: FileText, txt: FileText, url: Globe, note: FileText,
+  pdf: FileText, txt: FileText, url: Globe, note: FileText, image: ImageIcon,
 };
 
 const STATUS_ICON = {
@@ -201,7 +202,18 @@ export default function DocumentsPage() {
             const SIcon = STATUS_ICON[doc.status];
             return (
               <div key={doc.id} className="flex items-center gap-3 p-4">
-                <Icon className="size-5 text-muted-foreground shrink-0" />
+                {doc.type === "image" && doc.storage_path ? (
+                  <div className="size-10 rounded overflow-hidden shrink-0 bg-muted">
+                    <img
+                      src={`/api/documents/${doc.id}/thumbnail`}
+                      alt={doc.name}
+                      className="size-full object-cover"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display="none"; }}
+                    />
+                  </div>
+                ) : (
+                  <Icon className="size-5 text-muted-foreground shrink-0" />
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{doc.name}</p>
                   <div className="flex items-center gap-2 mt-0.5">

@@ -40,3 +40,12 @@ create policy "user_documents_own" on user_documents
 
 create policy "document_chunks_own" on document_chunks
   for all using (auth.uid() = user_id);
+
+-- 008: 이미지 타입 + status 확장 (007에 병합)
+alter table user_documents drop constraint if exists user_documents_type_check;
+alter table user_documents add constraint user_documents_type_check
+  check (type in ('pdf', 'txt', 'url', 'note', 'image'));
+
+alter table user_documents drop constraint if exists user_documents_status_check;
+alter table user_documents add constraint user_documents_status_check
+  check (status in ('processing', 'ready', 'ready_no_search', 'error'));

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { supabaseServer } from "@/lib/supabase/admin";
 import { buildRagContext, extractSymbols, searchUserDocuments } from "@/features/chat/lib/chat-rag";
+import { buildVisionContent } from "@/features/chat/lib/chat-vision";
 import { loadUserMemories, formatMemoriesForContext, detectMemoryRequest, saveMemory } from "@/features/chat/lib/chat-memory";
 import { upsertInterests } from "@/features/chat/lib/chat-interests";
 
@@ -174,7 +175,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 메모리 읽기 + RAG 병렬 실행 ──
-  const [ragContext, docContext, memoryContext] = await Promise.all([
+  const [ragContext, docContext, memoryContext, visionContent] = await Promise.all([
     buildRagContext(message).catch((err) => {
       console.warn("[chat/send] RAG failed:", err);
       return null;
@@ -186,6 +187,9 @@ export async function POST(req: NextRequest) {
       ? loadUserMemories(userId)
           .then(formatMemoriesForContext)
           .catch(() => null)
+      : null,
+    userId
+      ? buildVisionContent(message, userId).catch(() => null)
       : null,
   ]);
 
@@ -241,10 +245,21 @@ export async function POST(req: NextRequest) {
     : currentMsg;
 
   // ── 직접 모델 호출 (openclaw:main 세션 경유 X) ──
+  // 이미지 첨부 시 content 배열, 아니면 문자열
+  const inputPayload = visionContent
+    ? [
+        ...visionContent,
+        { type: "text" as const, text: historyInput.length > 0
+            ? inputStr  // 히스토리 포함 텍스트
+            : message.replace(/\[이미지:[^\]]+\]/g, "").replace(/\[첨부:[^\]]+\]/g, "").trim() || message
+        },
+      ]
+    : inputStr;
+
   const body = {
-    model: "anthropic/claude-sonnet-4-6", // 직접 모델 호출 → 툴 없음, 세션 격리
+    model: "anthropic/claude-sonnet-4-6",
     instructions,
-    input: inputStr,
+    input: inputPayload,
     stream: true,
     user: userId ?? sessionKey,
   };
