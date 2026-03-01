@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import FilterBar from "@/features/real-estate/components/FilterBar";
 import TradeTable from "@/features/real-estate/components/TradeTable";
-import { SEOUL_GU } from "@/lib/constants";
+import { SEOUL_GU, GYEONGGI_SI } from "@/lib/constants";
 
 const RankChart = dynamic(() => import("@/features/real-estate/components/RankChart"), {
   loading: () => <Skeleton className="h-[300px]" />,
@@ -31,21 +31,48 @@ export default function RealEstatePage() {
           </TabsList>
 
           <TabsContent value="regions">
-            <div className="divide-y border rounded-lg">
-              {SEOUL_GU.map((gu) => (
-                <Link
-                  key={gu.code}
-                  href={`/real-estate/${gu.code}`}
-                  className="flex items-center justify-between py-3 px-4 hover:bg-muted/50 rounded transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <Building2 className="size-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">{gu.name}</span>
-                  </div>
-                  <ChevronRight className="size-4 text-muted-foreground" />
-                </Link>
-              ))}
-            </div>
+            <Tabs defaultValue="seoul" className="space-y-3">
+              <TabsList>
+                <TabsTrigger value="seoul">서울</TabsTrigger>
+                <TabsTrigger value="gyeonggi">경기도</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="seoul">
+                <div className="divide-y border rounded-lg">
+                  {SEOUL_GU.map((gu) => (
+                    <Link
+                      key={gu.code}
+                      href={"/real-estate/" + gu.code}
+                      className="flex items-center justify-between py-3 px-4 hover:bg-muted/50 rounded transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Building2 className="size-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">{gu.name}</span>
+                      </div>
+                      <ChevronRight className="size-4 text-muted-foreground" />
+                    </Link>
+                  ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="gyeonggi">
+                <div className="divide-y border rounded-lg">
+                  {GYEONGGI_SI.map((si) => (
+                    <Link
+                      key={si.code}
+                      href={"/real-estate/" + si.code}
+                      className="flex items-center justify-between py-3 px-4 hover:bg-muted/50 rounded transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Building2 className="size-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">{si.name}</span>
+                      </div>
+                      <ChevronRight className="size-4 text-muted-foreground" />
+                    </Link>
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="recent" className="space-y-4">

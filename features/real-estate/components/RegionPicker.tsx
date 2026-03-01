@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, memo } from "react";
-import { SEOUL_GU } from "@/lib/constants";
+import { SEOUL_GU, GYEONGGI_SI } from "@/lib/constants";
 import { ChevronDown, MapPin } from "lucide-react";
 
 interface RegionGroup {
@@ -9,7 +9,7 @@ interface RegionGroup {
   codes: string[];
 }
 
-const REGION_GROUPS: RegionGroup[] = [
+const SEOUL_GROUPS: RegionGroup[] = [
   { label: "도심권", codes: ["11110", "11140", "11170"] },
   {
     label: "동북권",
@@ -23,7 +23,27 @@ const REGION_GROUPS: RegionGroup[] = [
   { label: "동남권(강남)", codes: ["11650", "11680", "11710", "11740"] },
 ];
 
-const codeToName = Object.fromEntries(SEOUL_GU.map((g) => [g.code, g.name]));
+const GYEONGGI_GROUPS: RegionGroup[] = [
+  { label: "수원", codes: ["41111", "41113", "41115", "41117"] },
+  { label: "성남", codes: ["41131", "41133", "41135"] },
+  { label: "고양", codes: ["41281", "41285", "41287"] },
+  { label: "용인", codes: ["41461", "41463", "41465"] },
+  { label: "안양/안산", codes: ["41171", "41173", "41271", "41273"] },
+  {
+    label: "기타",
+    codes: [
+      "41150", "41190", "41210", "41220", "41250",
+      "41290", "41310", "41360", "41370", "41390",
+      "41410", "41430", "41450", "41480", "41500",
+      "41550", "41570", "41590", "41610", "41630",
+      "41650", "41670",
+    ],
+  },
+];
+
+const SEOUL_CODE_TO_NAME = Object.fromEntries(SEOUL_GU.map((g) => [g.code, g.name]));
+const GYEONGGI_CODE_TO_NAME = Object.fromEntries(GYEONGGI_SI.map((g) => [g.code, g.name]));
+const ALL_CODE_TO_NAME = { ...SEOUL_CODE_TO_NAME, ...GYEONGGI_CODE_TO_NAME };
 
 interface RegionPickerProps {
   value: string;
@@ -32,9 +52,11 @@ interface RegionPickerProps {
 
 function RegionPickerComponent({ value, onValueChange }: RegionPickerProps) {
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<"seoul" | "gyeonggi">(
+    value.startsWith("41") ? "gyeonggi" : "seoul"
+  );
   const ref = useRef<HTMLDivElement>(null);
 
-  // close on outside click
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
@@ -44,7 +66,6 @@ function RegionPickerComponent({ value, onValueChange }: RegionPickerProps) {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  // close on Escape
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -54,7 +75,38 @@ function RegionPickerComponent({ value, onValueChange }: RegionPickerProps) {
     return () => document.removeEventListener("keydown", handler);
   }, [open]);
 
-  const selectedName = codeToName[value] || "지역 선택";
+  const selectedName = ALL_CODE_TO_NAME[value] || "지역 선택";
+
+  const renderGroups = (groups: RegionGroup[], codeToName: Record<string, string>) =>
+    groups.map((group) => (
+      <div key={group.label} className="mb-3 last:mb-0">
+        <div className="text-xs font-semibold text-muted-foreground mb-1.5 px-1">
+          {group.label}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {group.codes.map((code) => {
+            const isSelected = code === value;
+            return (
+              <button
+                key={code}
+                type="button"
+                onClick={() => {
+                  onValueChange(code);
+                  setOpen(false);
+                }}
+                className={`rounded-md px-2.5 py-1 text-sm transition-colors ${
+                  isSelected
+                    ? "bg-primary text-primary-foreground font-medium"
+                    : "bg-muted hover:bg-accent hover:text-accent-foreground"
+                }`}
+              >
+                {codeToName[code]}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    ));
 
   return (
     <div ref={ref} className="relative">
@@ -71,36 +123,37 @@ function RegionPickerComponent({ value, onValueChange }: RegionPickerProps) {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-[calc(100%+4px)] z-50 w-[340px] max-h-[70vh] overflow-y-auto rounded-lg border bg-popover p-3 shadow-lg animate-in fade-in-0 zoom-in-95 sm:w-[380px]">
-          {REGION_GROUPS.map((group) => (
-            <div key={group.label} className="mb-3 last:mb-0">
-              <div className="text-xs font-semibold text-muted-foreground mb-1.5 px-1">
-                {group.label}
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {group.codes.map((code) => {
-                  const isSelected = code === value;
-                  return (
-                    <button
-                      key={code}
-                      type="button"
-                      onClick={() => {
-                        onValueChange(code);
-                        setOpen(false);
-                      }}
-                      className={`rounded-md px-2.5 py-1 text-sm transition-colors ${
-                        isSelected
-                          ? "bg-primary text-primary-foreground font-medium"
-                          : "bg-muted hover:bg-accent hover:text-accent-foreground"
-                      }`}
-                    >
-                      {codeToName[code]}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+        <div className="absolute left-0 top-[calc(100%+4px)] z-50 w-[340px] max-h-[70vh] overflow-y-auto rounded-lg border bg-popover shadow-lg animate-in fade-in-0 zoom-in-95 sm:w-[380px]">
+          {/* 탭 헤더 */}
+          <div className="flex border-b sticky top-0 bg-popover z-10">
+            <button
+              type="button"
+              onClick={() => setTab("seoul")}
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                tab === "seoul"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              서울
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("gyeonggi")}
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                tab === "gyeonggi"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              경기도
+            </button>
+          </div>
+          <div className="p-3">
+            {tab === "seoul"
+              ? renderGroups(SEOUL_GROUPS, SEOUL_CODE_TO_NAME)
+              : renderGroups(GYEONGGI_GROUPS, GYEONGGI_CODE_TO_NAME)}
+          </div>
         </div>
       )}
     </div>

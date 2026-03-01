@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SEOUL_GU } from "@/lib/constants";
+import { SEOUL_GU, GYEONGGI_SI } from "@/lib/constants";
 import FilterBar from "@/features/real-estate/components/FilterBar";
 import Charts from "@/features/real-estate/components/Charts";
 import TradeTable from "@/features/real-estate/components/TradeTable";
@@ -28,7 +28,7 @@ export default function RegionDetailPage({
   const { region } = use(params);
 
   // SEOUL_GU에서 지역명 찾기
-  const guInfo = SEOUL_GU.find((g) => g.code === region);
+  const guInfo = SEOUL_GU.find((g) => g.code === region) || GYEONGGI_SI.find((g) => g.code === region);
   const guName = guInfo?.name || region;
 
   return (
