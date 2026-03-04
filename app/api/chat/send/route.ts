@@ -256,34 +256,45 @@ export async function POST(req: NextRequest) {
       ]
     : inputStr;
 
-  const body = {
-    model: "google/gemini-2.5-flash",
-    instructions,
-    input: inputPayload,
-    stream: true,
-    user: userId ?? sessionKey,
-  };
+  // ── 모델 폴백 체인 (무료 티어 우선) ──
+  const MODEL_CHAIN = [
+    "google/gemini-2.5-flash",       // 1순위: Gemini free tier
+    "groq/llama-3.3-70b-versatile",  // 2순위: Groq free (429 fallback)
+    "google/gemini-2.5-flash-lite",  // 3순위: Gemini Lite
+  ];
 
-  let upstream: Response;
-  try {
-    upstream = await fetch(`${GATEWAY_URL}/v1/responses`, {
+  async function callGateway(model: string): Promise<Response> {
+    return fetch(`${GATEWAY_URL}/v1/responses`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${GATEWAY_TOKEN}`,
-        // x-openclaw-session-key 헤더 제거 → 메인 세션 라우팅 차단
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ model, instructions, input: inputPayload, stream: true, user: userId ?? sessionKey }),
     });
-  } catch (err) {
-    console.error("[chat/send] Gateway fetch failed:", err);
-    return new Response(JSON.stringify({ error: "Gateway unreachable" }), { status: 503 });
   }
 
-  if (!upstream.ok) {
-    const err = await upstream.text();
-    console.error("[chat/send] Gateway error:", err);
-    return new Response(JSON.stringify({ error: "AI 서비스 오류" }), { status: upstream.status });
+  let upstream: Response | null = null;
+  for (const model of MODEL_CHAIN) {
+    try {
+      const res = await callGateway(model);
+      if (res.ok) { upstream = res; break; }
+      if (res.status === 429 || res.status === 503) {
+        console.warn(`[chat/send] ${model} rate limited, trying next...`);
+        continue;
+      }
+      // 다른 에러는 바로 반환
+      const err = await res.text();
+      console.error(`[chat/send] Gateway error (${model}):`, err);
+      return new Response(JSON.stringify({ error: "AI 서비스 오류" }), { status: res.status });
+    } catch (err) {
+      console.warn(`[chat/send] ${model} fetch failed:`, err);
+    }
+  }
+
+  if (!upstream) {
+    console.error("[chat/send] All models exhausted");
+    return new Response(JSON.stringify({ error: "Gateway unreachable" }), { status: 503 });
   }
 
   if (!upstream.body) {
