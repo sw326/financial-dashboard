@@ -257,7 +257,7 @@ export async function POST(req: NextRequest) {
     : inputStr;
 
   const body = {
-    model: "anthropic/claude-sonnet-4-6",
+    model: "google/gemini-2.5-flash",
     instructions,
     input: inputPayload,
     stream: true,
